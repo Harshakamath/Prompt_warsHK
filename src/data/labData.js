@@ -19,6 +19,7 @@ export const initialEquipment = [
     prerequisites: "Python 3.10, PyTorch/TensorRT basics, Lab Safety Induction Level 1",
     totalUnits: 3,
     availableUnits: 1,
+    dutyCycle: "94%",
     hourlyUtilization: 94
   },
   {
@@ -32,6 +33,7 @@ export const initialEquipment = [
     prerequisites: "Verilog/VHDL, Vivado 2023.2 tooling, FPGA Architecture I",
     totalUnits: 4,
     availableUnits: 2,
+    dutyCycle: "82%",
     hourlyUtilization: 82
   },
   {
@@ -45,6 +47,7 @@ export const initialEquipment = [
     prerequisites: "CAD modeling (SolidWorks / Fusion 360), PreForm SLA slicer clearance",
     totalUnits: 2,
     availableUnits: 0,
+    dutyCycle: "98%",
     hourlyUtilization: 98
   },
   {
@@ -58,6 +61,7 @@ export const initialEquipment = [
     prerequisites: "Signals & Systems, RF Lab Safety, Probe Calibration Guide",
     totalUnits: 2,
     availableUnits: 1,
+    dutyCycle: "76%",
     hourlyUtilization: 76
   },
   {
@@ -71,6 +75,7 @@ export const initialEquipment = [
     prerequisites: "Biosafety Level 2 (BSL-2) certified, Pipetting Protocol clearance",
     totalUnits: 1,
     availableUnits: 1,
+    dutyCycle: "85%",
     hourlyUtilization: 85
   },
   {
@@ -84,6 +89,7 @@ export const initialEquipment = [
     prerequisites: "Linux CLI proficiency, Docker / Slurm cluster basics",
     totalUnits: 5,
     availableUnits: 3,
+    dutyCycle: "96%",
     hourlyUtilization: 96
   },
   {
@@ -97,6 +103,7 @@ export const initialEquipment = [
     prerequisites: "ROS 2 Humble, Cobot E-Stop Safety training, Kinematics & Control",
     totalUnits: 2,
     availableUnits: 0,
+    dutyCycle: "91%",
     hourlyUtilization: 91
   },
   {
@@ -110,6 +117,7 @@ export const initialEquipment = [
     prerequisites: "CMOS Analog Circuit Design, Virtuoso Schematic Editor clearance",
     totalUnits: 3,
     availableUnits: 2,
+    dutyCycle: "79%",
     hourlyUtilization: 79
   }
 ];
@@ -175,16 +183,57 @@ export const sampleConflictingRequests = [
 /**
  * Campus laboratory sharing and resource utilization metrics.
  */
-export const initialCampusMetrics = {
+export const campusMetrics = {
+  reclaimedIdleHours: 148,
+  capexSavedINR: "₹6.8 Lakhs",
+  crossDeptSharingIndex: "91.4%",
   overallUtilization: 88.4,
   idleReductionPercentage: "+34.2%",
   activeSharedNodes: 24,
   crossDeptCollaborations: 142,
-  peakHours: [
-    { period: "08:00 AM - 10:00 AM", loadPercentage: 58, label: "Moderate Utilization" },
-    { period: "10:00 AM - 01:00 PM", loadPercentage: 94, label: "Peak Load (High Competition)" },
-    { period: "02:00 PM - 05:00 PM", loadPercentage: 86, label: "Heavy Project Activity" },
-    { period: "05:00 PM - 08:00 PM", loadPercentage: 62, label: "Evening Dedicated Shift" }
+  departmentSharingMatrix: [
+    {
+      sourceDept: "Computer Science & ISE",
+      targetLab: "ECE Microwave & Signal Center",
+      hoursShared: 42,
+      equipmentUsed: "Keysight Infiniium 4-Channel DSO"
+    },
+    {
+      sourceDept: "ECE / VLSI",
+      targetLab: "AI & Robotics Autonomous Center",
+      hoursShared: 38,
+      equipmentUsed: "NVIDIA Jetson AGX Orin DevKit"
+    },
+    {
+      sourceDept: "Biotechnology",
+      targetLab: "Mechanical Prototyping Facility",
+      hoursShared: 26,
+      equipmentUsed: "Formlabs Form 4BL SLA 3D Printer"
+    },
+    {
+      sourceDept: "Mechanical / Prototyping",
+      targetLab: "Robotics & Cobot Automation Lab",
+      hoursShared: 24,
+      equipmentUsed: "Universal Robots UR5e Cobot Arm"
+    },
+    {
+      sourceDept: "VLSI & Embedded",
+      targetLab: "HPC Cloud & Deep Learning Wing",
+      hoursShared: 18,
+      equipmentUsed: "Dual RTX 4090 Workstation Node"
+    }
+  ],
+  hourlyLoadDistribution: [
+    { hour: "09:00", occupancy: 45, status: "Off-Peak" },
+    { hour: "10:00", occupancy: 78, status: "Moderate" },
+    { hour: "11:00", occupancy: 96, status: "Peak Contention" },
+    { hour: "12:00", occupancy: 92, status: "Peak Contention" },
+    { hour: "13:00", occupancy: 60, status: "Lunch Shift" },
+    { hour: "14:00", occupancy: 88, status: "High Utilization" },
+    { hour: "15:00", occupancy: 94, status: "Peak Contention" },
+    { hour: "16:00", occupancy: 85, status: "High Utilization" },
+    { hour: "17:00", occupancy: 68, status: "Evening Shift" },
+    { hour: "18:00", occupancy: 42, status: "Off-Peak" }
   ],
   departmentBreakdown: [
     { department: "AI & Robotics", utilization: 92, activeNodes: 5, sharedProjects: 46 },
@@ -200,3 +249,5 @@ export const initialCampusMetrics = {
     "Cloud GPU node remote Slurm queuing reduced idle physical workstation hours by 34.2% this semester."
   ]
 };
+
+export const initialCampusMetrics = campusMetrics;

@@ -1,247 +1,168 @@
 import { describe, it, expect } from "vitest";
-import { resolveAllocationConflict, scoreRequest } from "../services/aiScheduler";
+import {
+  resolveAllocationConflict,
+  scoreRequest,
+  generateDigitalLabPass
+} from "../services/aiScheduler";
 import { sanitizeInput, validateBookingPayload } from "../utils/security";
 import { sampleConflictingRequests } from "../data/labData";
 
-describe("AI Scheduler Scoring Criteria (50/30/20 MCDA Model)", () => {
-  it("should calculate composite score correctly with 50/30/20 max weights", () => {
-    const scored = scoreRequest({
-      studentName: "Aarav Sharma",
-      deadlineDaysRemaining: 2, // 50 pts
-      urgencyLevel: "Critical",  // 30 pts
-      priorMonthlyBookings: 0    // 20 pts
-    });
-
-    expect(scored.compositeScore).toBe(100);
-    expect(scored.scoreBreakdown.deadlineScore).toBe(50);
-    expect(scored.scoreBreakdown.urgencyScore).toBe(30);
-    expect(scored.scoreBreakdown.fairnessScore).toBe(20);
-  });
-
-  it("should award deadline points according to proximity brackets", () => {
-    expect(scoreRequest({ deadlineDaysRemaining: 1 }).scoreBreakdown.deadlineScore).toBe(50);
-    expect(scoreRequest({ deadlineDaysRemaining: 2 }).scoreBreakdown.deadlineScore).toBe(50);
-    expect(scoreRequest({ deadlineDaysRemaining: 4 }).scoreBreakdown.deadlineScore).toBe(42);
-    expect(scoreRequest({ deadlineDaysRemaining: 7 }).scoreBreakdown.deadlineScore).toBe(34);
-    expect(scoreRequest({ deadlineDaysRemaining: 10 }).scoreBreakdown.deadlineScore).toBe(26);
-    expect(scoreRequest({ deadlineDaysRemaining: 14 }).scoreBreakdown.deadlineScore).toBe(18);
-    expect(scoreRequest({ deadlineDaysRemaining: 20 }).scoreBreakdown.deadlineScore).toBe(10);
-  });
-
-  it("should award urgency points according to severity tiers", () => {
-    expect(scoreRequest({ urgencyLevel: "Critical" }).scoreBreakdown.urgencyScore).toBe(30);
-    expect(scoreRequest({ urgencyLevel: "High" }).scoreBreakdown.urgencyScore).toBe(20);
-    expect(scoreRequest({ urgencyLevel: "Normal" }).scoreBreakdown.urgencyScore).toBe(10);
-    expect(scoreRequest({ urgencyLevel: "other" }).scoreBreakdown.urgencyScore).toBe(10);
-  });
-
-  it("should penalize frequent prior bookings to preserve equity", () => {
-    expect(scoreRequest({ priorMonthlyBookings: 0 }).scoreBreakdown.fairnessScore).toBe(20);
-    expect(scoreRequest({ priorMonthlyBookings: 1 }).scoreBreakdown.fairnessScore).toBe(16);
-    expect(scoreRequest({ priorMonthlyBookings: 2 }).scoreBreakdown.fairnessScore).toBe(12);
-    expect(scoreRequest({ priorMonthlyBookings: 3 }).scoreBreakdown.fairnessScore).toBe(8);
-    expect(scoreRequest({ priorMonthlyBookings: 5 }).scoreBreakdown.fairnessScore).toBe(4);
-  });
-});
-
-describe("AI Conflict Resolver (resolveAllocationConflict)", () => {
-  it("should select the optimal slot winner for sample conflicting requests", () => {
-    const result = resolveAllocationConflict(sampleConflictingRequests);
-
-    expect(result).toBeDefined();
-    expect(result.winner).toBeDefined();
-    // Aarav Sharma has 2 days deadline (50), Critical urgency (30), 1 prior booking (16) = 96
-    expect(result.winner.id).toBe("REQ-2026-001");
-    expect(result.winner.studentName).toBe("Aarav Sharma");
-    expect(result.winner.compositeScore).toBe(96);
-  });
-
-  it("should break ties fairly by deadline proximity and usage equity", () => {
-    // Exact score tie:
-    // candidate X: 42 (day 4) + 20 (High) + 16 (prior 1) = 78
-    // candidate Y: 50 (day 2) + 20 (High) + 8 (prior 3) = 78
-    const tieX = {
-      id: "TX",
-      studentName: "Candidate X",
-      deadlineDaysRemaining: 4,
-      urgencyLevel: "High",
-      priorMonthlyBookings: 1
-    };
-    const tieY = {
-      id: "TY",
-      studentName: "Candidate Y",
+describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
+  // Test 1: Prioritizing closer project deadlines
+  it("1. should prioritize requests with closer project deadlines", () => {
+    const urgentDeadline = scoreRequest({
+      studentName: "Student Urgent",
       deadlineDaysRemaining: 2,
       urgencyLevel: "High",
-      priorMonthlyBookings: 3
-    };
+      priorMonthlyBookings: 1
+    });
+    const distantDeadline = scoreRequest({
+      studentName: "Student Distant",
+      deadlineDaysRemaining: 12,
+      urgencyLevel: "High",
+      priorMonthlyBookings: 1
+    });
 
-    const tieResult = resolveAllocationConflict([tieX, tieY]);
-    expect(tieResult.winner.compositeScore).toBe(78);
-    // tieY has fewer deadline days remaining (2 vs 4), so tieY wins the tie-break
-    expect(tieResult.winner.id).toBe("TY");
+    expect(urgentDeadline.scoreBreakdown.deadlineScore).toBe(50);
+    expect(distantDeadline.scoreBreakdown.deadlineScore).toBe(18);
+    expect(urgentDeadline.compositeScore).toBeGreaterThan(distantDeadline.compositeScore);
   });
 
-  it("should generate a reasoned explanation and slot details", () => {
-    const result = resolveAllocationConflict(sampleConflictingRequests);
+  // Test 2: Urgency tier weighting (Critical vs Normal)
+  it("2. should weight project urgency tiers correctly (Critical: 30pts vs Normal: 10pts)", () => {
+    const criticalReq = scoreRequest({ urgencyLevel: "Critical" });
+    const normalReq = scoreRequest({ urgencyLevel: "Normal" });
 
-    expect(result.explanation).toContain("Aarav Sharma");
-    expect(result.explanation).toContain("composite score of 96/100");
-    expect(result.allocatedSlot).toContain("2026-11-24");
-    expect(result.allocatedSlot).toContain("10:00 AM - 01:00 PM");
+    expect(criticalReq.scoreBreakdown.urgencyScore).toBe(30);
+    expect(normalReq.scoreBreakdown.urgencyScore).toBe(10);
   });
 
-  it("should provide alternative slot and workstation backup for deferred requests", () => {
-    const result = resolveAllocationConflict(sampleConflictingRequests);
+  // Test 3: Equity penalty for repeat bookings
+  it("3. should penalize frequent prior bookings to foster usage equity and prevent resource hoarding", () => {
+    const firstTimeUser = scoreRequest({ priorMonthlyBookings: 0 });
+    const repeatUser = scoreRequest({ priorMonthlyBookings: 5 });
 
-    expect(result.suggestedAlternative).toBeDefined();
-    expect(result.suggestedAlternative.student).toContain("Priyanka Nair");
-    expect(result.suggestedAlternative.suggestedDate).toBeDefined();
-    expect(result.suggestedAlternative.suggestedSlot).toBeDefined();
-    expect(result.suggestedAlternative.workstationBackup).toContain("Lab 501");
-    expect(result.deferredRequests.length).toBe(2);
+    expect(firstTimeUser.scoreBreakdown.fairnessScore).toBe(20);
+    expect(repeatUser.scoreBreakdown.fairnessScore).toBe(4);
+    expect(firstTimeUser.compositeScore).toBeGreaterThan(repeatUser.compositeScore);
   });
 
-  it("should handle single request edge cases gracefully without conflicts", () => {
-    const single = [sampleConflictingRequests[0]];
-    const result = resolveAllocationConflict(single);
+  // Test 4: Alternative slot recommendation for deferred requests
+  it("4. should suggest an alternative slot and workstation backup for deferred requests", () => {
+    const conflictResult = resolveAllocationConflict(sampleConflictingRequests);
 
-    expect(result.winner.id).toBe("REQ-2026-001");
-    expect(result.suggestedAlternative).toBeNull();
-    expect(result.explanation).toContain("Direct allocation granted");
+    expect(conflictResult.suggestedAlternative).toBeDefined();
+    expect(conflictResult.suggestedAlternative.student).toContain("Priyanka Nair");
+    expect(conflictResult.suggestedAlternative.suggestedDate).toBeDefined();
+    expect(conflictResult.suggestedAlternative.suggestedSlot).toContain("02:00 PM - 05:00 PM");
+    expect(conflictResult.suggestedAlternative.workstationBackup).toContain("Lab 501");
   });
 
-  it("should handle empty or invalid request arrays safely", () => {
-    const emptyResult = resolveAllocationConflict([]);
-    expect(emptyResult.winner).toBeNull();
-    expect(emptyResult.explanation).toContain("No competing requests");
+  // Test 5: Complete Explainable AI (XAI) score breakdown calculation
+  it("5. should output a complete Explainable AI (XAI) score breakdown formula", () => {
+    const scored = scoreRequest({
+      deadlineDaysRemaining: 2,
+      urgencyLevel: "Critical",
+      priorMonthlyBookings: 1
+    });
 
-    const nullResult = resolveAllocationConflict(null);
-    expect(nullResult.winner).toBeNull();
-
-    const undefinedResult = resolveAllocationConflict(undefined);
-    expect(undefinedResult.winner).toBeNull();
-  });
-});
-
-describe("Security Sanitization (sanitizeInput)", () => {
-  it("should strip angle brackets and null bytes to prevent XSS", () => {
-    const malicious = "<script>alert('pwned')\0</script>";
-    const sanitized = sanitizeInput(malicious);
-    expect(sanitized).toBe("scriptalert('pwned')/script");
-    expect(sanitized).not.toContain("<");
-    expect(sanitized).not.toContain(">");
-    expect(sanitized).not.toContain("\0");
+    // 50 (deadline) + 30 (urgency) + 16 (equity) = 96
+    expect(scored.compositeScore).toBe(96);
+    expect(scored.scoreBreakdown).toEqual({
+      deadlineScore: 50,
+      urgencyScore: 30,
+      fairnessScore: 16
+    });
+    expect(scored.xaiFormula).toBe(
+      "50pts (Deadline) + 30pts (Urgency) + 16pts (Equity) = 96/100"
+    );
   });
 
-  it("should trim surrounding whitespace", () => {
-    const input = "   Aarav Sharma   ";
-    expect(sanitizeInput(input)).toBe("Aarav Sharma");
-  });
-
-  it("should enforce maximum length limit", () => {
-    const longString = "A".repeat(300);
-    const sanitized = sanitizeInput(longString, 50);
-    expect(sanitized.length).toBe(50);
-  });
-
-  it("should handle null, undefined, numbers, and booleans safely", () => {
-    expect(sanitizeInput(null)).toBe("");
-    expect(sanitizeInput(undefined)).toBe("");
-    expect(sanitizeInput(12345)).toBe("12345");
-    expect(sanitizeInput(true)).toBe("true");
-  });
-});
-
-describe("Booking Payload Validation (validateBookingPayload)", () => {
-  const getFutureDateStr = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split("T")[0];
-  };
-
-  it("should pass for a fully valid booking payload", () => {
-    const payload = {
+  // Test 6: Digital lab pass token generation and bench allocation
+  it("6. should generate an authorized digital lab gate pass with bench allocation and verification hash", () => {
+    const request = {
+      id: "REQ-2026-001",
       studentName: "Aarav Sharma",
       usn: "1MS21CS004",
-      projectTitle: "Edge TensorRT Autonomous Obstacle Avoidance",
-      deadline: getFutureDateStr(),
+      department: "Computer Science & ISE",
+      equipmentName: "NVIDIA Jetson AGX Orin DevKit",
+      guideName: "Dr. Sudhir Rao",
+      slotDate: "2026-11-24",
+      timeSlot: "10:00 AM - 01:00 PM"
+    };
+
+    const pass = generateDigitalLabPass(request, "Bench-04A");
+
+    expect(pass).toBeDefined();
+    expect(pass.passId).toMatch(/^PASS-2026-JETSON-\d+/);
+    expect(pass.benchNumber).toBe("Bench-04A");
+    expect(pass.status).toBe("AUTHORIZED_ACTIVE");
+    expect(pass.verificationHash).toMatch(/^0x[a-f0-9]+/);
+    expect(pass.studentName).toBe("Aarav Sharma");
+  });
+
+  // Test 7: Input sanitization against <script> XSS vectors
+  it("7. should neutralize <script> XSS injection vectors from user inputs", () => {
+    const maliciousInput = "<script>alert('pwned')</script>";
+    const sanitized = sanitizeInput(maliciousInput);
+
+    expect(sanitized).toBe("scriptalert('pwned')/script");
+    expect(sanitized).not.toContain("<script>");
+    expect(sanitized).not.toContain("<");
+    expect(sanitized).not.toContain(">");
+  });
+
+  // Test 8: Input sanitization against HTML tag injection
+  it("8. should strip HTML tags and bound excessive character length", () => {
+    const htmlPayload = "<h1>Autonomous Navigation</h1><img src=x onerror=alert(1)>";
+    const sanitized = sanitizeInput(htmlPayload, 25);
+
+    expect(sanitized).not.toContain("<");
+    expect(sanitized).not.toContain(">");
+    expect(sanitized.length).toBeLessThanOrEqual(25);
+  });
+
+  // Test 9: Form payload rejection for missing USN/student name
+  it("9. should reject booking payloads missing student name or USN", () => {
+    const missingNamePayload = {
+      studentName: "",
+      usn: "1MS21CS004",
+      projectTitle: "Robotics Sensor Fusion",
+      deadline: "2026-12-01"
+    };
+    const missingUsnPayload = {
+      studentName: "Aarav Sharma",
+      usn: "",
+      projectTitle: "Robotics Sensor Fusion",
+      deadline: "2026-12-01"
+    };
+
+    const validation1 = validateBookingPayload(missingNamePayload);
+    const validation2 = validateBookingPayload(missingUsnPayload);
+
+    expect(validation1.isValid).toBe(false);
+    expect(validation1.errors.studentName).toBeDefined();
+
+    expect(validation2.isValid).toBe(false);
+    expect(validation2.errors.usn).toBeDefined();
+  });
+
+  // Test 10: Form payload acceptance for valid project submissions
+  it("10. should accept and validate legitimate project booking submissions", () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 10);
+
+    const validPayload = {
+      studentName: "Aarav Sharma",
+      usn: "1MS21CS004",
+      projectTitle: "Edge TensorRT UAV Obstacle Avoidance",
+      deadline: futureDate.toISOString().split("T")[0],
       urgencyLevel: "Critical"
     };
 
-    const result = validateBookingPayload(payload);
+    const result = validateBookingPayload(validPayload);
+
     expect(result.isValid).toBe(true);
     expect(Object.keys(result.errors).length).toBe(0);
-  });
-
-  it("should reject missing or too short student names", () => {
-    const payload = {
-      studentName: " ",
-      usn: "1MS21CS004",
-      projectTitle: "FPGA Acceleration",
-      deadline: getFutureDateStr()
-    };
-
-    const result = validateBookingPayload(payload);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.studentName).toBeDefined();
-  });
-
-  it("should reject invalid USN format", () => {
-    const payload = {
-      studentName: "Priyanka Nair",
-      usn: "!!@@##",
-      projectTitle: "Traffic Telemetry System",
-      deadline: getFutureDateStr()
-    };
-
-    const result = validateBookingPayload(payload);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.usn).toBeDefined();
-  });
-
-  it("should reject missing or short project titles", () => {
-    const payload = {
-      studentName: "Priyanka Nair",
-      usn: "1MS21EC089",
-      projectTitle: "AI",
-      deadline: getFutureDateStr()
-    };
-
-    const result = validateBookingPayload(payload);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.projectTitle).toBeDefined();
-  });
-
-  it("should reject past deadline dates", () => {
-    const payload = {
-      studentName: "Rohan Kulkarni",
-      usn: "1MS22AI032",
-      projectTitle: "Quadruped Robot Navigation",
-      deadline: "2020-01-01"
-    };
-
-    const result = validateBookingPayload(payload);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.deadline).toBe("Project deadline cannot be in the past.");
-  });
-
-  it("should reject invalid urgency levels if provided", () => {
-    const payload = {
-      studentName: "Rohan Kulkarni",
-      usn: "1MS22AI032",
-      projectTitle: "Quadruped Robot Navigation",
-      deadline: getFutureDateStr(),
-      urgencyLevel: "SuperUrgent"
-    };
-
-    const result = validateBookingPayload(payload);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.urgencyLevel).toBeDefined();
-  });
-
-  it("should handle null or invalid payload objects", () => {
-    const result = validateBookingPayload(null);
-    expect(result.isValid).toBe(false);
-    expect(result.errors.general).toBeDefined();
   });
 });

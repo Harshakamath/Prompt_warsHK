@@ -17,21 +17,27 @@ import {
   TrendingUp,
   Layers,
   Activity,
-  BookOpen
+  BookOpen,
+  QrCode,
+  Award,
+  FileText
 } from "lucide-react";
 import {
   initialEquipment,
   sampleConflictingRequests,
-  initialCampusMetrics
+  campusMetrics
 } from "./data/labData";
-import { resolveAllocationConflict } from "./services/aiScheduler";
+import {
+  resolveAllocationConflict,
+  generateDigitalLabPass
+} from "./services/aiScheduler";
 import { sanitizeInput, validateBookingPayload } from "./utils/security";
 
 export default function App() {
   const [equipmentList, setEquipmentList] = useState(initialEquipment);
   const [selectedDept, setSelectedDept] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("catalog");
+  const [activeTab, setActiveTab] = useState("catalog"); // 'catalog' | 'conflict-resolver' | 'faculty-portal' | 'utilization'
 
   // Booking Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,13 +59,17 @@ export default function App() {
   const [conflicts] = useState(sampleConflictingRequests);
   const [aiReport, setAiReport] = useState(null);
   const [isSolving, setIsSolving] = useState(false);
+  const [showXaiModal, setShowXaiModal] = useState(false);
 
-  // Faculty Approval Statuses & Audit Records
+  // Faculty Approval Statuses & Digital Lab Pass Modal
   const [facultyStatuses, setFacultyStatuses] = useState({
     "REQ-2026-001": "Pending",
     "REQ-2026-002": "Pending",
     "REQ-2026-003": "Pending"
   });
+  const [activeDigitalPass, setActiveDigitalPass] = useState(null);
+  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
   const departments = [
     "All",
@@ -71,16 +81,18 @@ export default function App() {
     "Computer Science & ISE"
   ];
 
-  // Close modal on Escape key press
+  // Close modals on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isModalOpen) {
-        setIsModalOpen(false);
+      if (e.key === "Escape") {
+        if (isModalOpen) setIsModalOpen(false);
+        if (isPassModalOpen) setIsPassModalOpen(false);
+        if (showXaiModal) setShowXaiModal(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isModalOpen]);
+  }, [isModalOpen, isPassModalOpen, showXaiModal]);
 
   // Memoized filter for performance and efficiency
   const filteredEquipment = useMemo(() => {
@@ -123,11 +135,11 @@ export default function App() {
       return;
     }
 
-    setBookingSuccess(
-      `Project slot request logged for ${targetEquipment.name}. Routed to ${
-        formData.guideName || "Department Faculty"
-      } for safety clearance and schedule reservation.`
-    );
+    const successMsg = `Project slot request logged for ${targetEquipment.name}. Routed to ${
+      formData.guideName || "Department Faculty"
+    } for safety clearance and schedule reservation.`;
+    setBookingSuccess(successMsg);
+    setLiveAnnouncement(successMsg);
 
     // Optimistically update available unit inventory if available
     if (targetEquipment && targetEquipment.availableUnits > 0) {
@@ -162,15 +174,21 @@ export default function App() {
       const report = resolveAllocationConflict(conflicts);
       setAiReport(report);
       setIsSolving(false);
+      setLiveAnnouncement(`AI conflict resolution finished. Optimal allocation granted to ${report.winner.studentName}.`);
     }, 350);
   };
 
-  const handleApprove = (id) => {
-    setFacultyStatuses((prev) => ({ ...prev, [id]: "Approved" }));
+  const handleApproveAndIssuePass = (item, benchNumber = "Bench-04A") => {
+    setFacultyStatuses((prev) => ({ ...prev, [item.id]: "Approved" }));
+    const pass = generateDigitalLabPass(item, benchNumber);
+    setActiveDigitalPass(pass);
+    setIsPassModalOpen(true);
+    setLiveAnnouncement(`Approved and issued digital gate pass for ${item.studentName}.`);
   };
 
   const handleReschedule = (id) => {
     setFacultyStatuses((prev) => ({ ...prev, [id]: "Rescheduled" }));
+    setLiveAnnouncement(`Request ${id} marked for rescheduling.`);
   };
 
   return (
@@ -182,6 +200,11 @@ export default function App() {
       >
         Skip to main content
       </a>
+
+      {/* Screen Reader Live Region for Announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {liveAnnouncement}
+      </div>
 
       {/* Main Accessible Header */}
       <header className="border-b border-slate-800 bg-[#0c1222]/95 backdrop-blur sticky top-0 z-40">
@@ -242,9 +265,9 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("utilization-dashboard")}
+              onClick={() => setActiveTab("utilization")}
               className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                activeTab === "utilization-dashboard"
+                activeTab === "utilization"
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/80"
               }`}
@@ -267,18 +290,23 @@ export default function App() {
                   Cross-Department Laboratory Resource Discovery
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Discover specialized laboratory hardware, kits, and high-performance workstations across campus departments.
+                  Discover specialized hardware kits, FPGA accelerators, and laboratory workstations across departments.
                 </p>
               </div>
               <div className="flex items-center gap-4 bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl text-xs shrink-0">
                 <div>
                   <span className="block text-slate-400 text-[11px]">Active Shared Nodes</span>
-                  <span className="font-semibold text-white text-sm">{initialCampusMetrics.activeSharedNodes} Nodes</span>
+                  <span className="font-semibold text-white text-sm">{campusMetrics.activeSharedNodes} Nodes</span>
+                </div>
+                <div className="h-7 w-px bg-slate-800" />
+                <div>
+                  <span className="block text-slate-400 text-[11px]">Reclaimed Idle Hours</span>
+                  <span className="font-semibold text-cyan-400 text-sm">{campusMetrics.reclaimedIdleHours} hrs</span>
                 </div>
                 <div className="h-7 w-px bg-slate-800" />
                 <div>
                   <span className="block text-slate-400 text-[11px]">Campus Utilization</span>
-                  <span className="font-semibold text-emerald-400 text-sm">{initialCampusMetrics.overallUtilization}%</span>
+                  <span className="font-semibold text-emerald-400 text-sm">{campusMetrics.overallUtilization}%</span>
                 </div>
               </div>
             </div>
@@ -381,9 +409,17 @@ export default function App() {
                           </strong>
                           <span className="text-slate-300">{item.prerequisites}</span>
                         </div>
-                        <div className="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/60">
-                          <span>Duty Utilization:</span>
-                          <span className="font-semibold text-emerald-400">{item.hourlyUtilization}%</span>
+                        <div className="pt-2 border-t border-slate-800/60 space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-slate-400">
+                            <span>Workstation Duty Cycle:</span>
+                            <span className="font-semibold text-emerald-400">{item.dutyCycle || `${item.hourlyUtilization}%`}</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-full rounded-full"
+                              style={{ width: `${item.hourlyUtilization || 85}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -403,7 +439,7 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 2: GenAI Conflict Resolver */}
+        {/* Tab 2: GenAI Conflict Resolver with XAI Breakdown */}
         {activeTab === "conflict-resolver" && (
           <section aria-labelledby="resolver-heading" className="space-y-6">
             <div className="bg-[#0f172a] border border-indigo-800/60 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -413,27 +449,37 @@ export default function App() {
                     GenAI Scheduling & Conflict Resolver
                   </h1>
                   <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-700/60 rounded-full">
-                    MCDA 100-Point Model
+                    Explainable AI (XAI)
                   </span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                  Resolves overlapping laboratory requests by balancing <strong className="text-slate-200">Deadline Proximity (50pts)</strong>,{" "}
+                  Multi-criteria optimization engine balancing <strong className="text-slate-200">Deadline Proximity (50pts)</strong>,{" "}
                   <strong className="text-slate-200">Urgency Severity (30pts)</strong>, and{" "}
-                  <strong className="text-slate-200">Resource Usage Equity (20pts)</strong>.
+                  <strong className="text-slate-200">Resource Usage Equity (20pts)</strong> to resolve overlapping slot requests fairly.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleRunAiSolver}
-                disabled={isSolving}
-                className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-              >
-                <Sparkles className="w-4 h-4 text-amber-300" aria-hidden="true" />
-                <span>{isSolving ? "Optimizing Allocations..." : "Run AI Conflict Solver"}</span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowXaiModal(true)}
+                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm rounded-xl transition flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                >
+                  <FileText className="w-4 h-4 text-cyan-300" aria-hidden="true" />
+                  <span>XAI Model Specs</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRunAiSolver}
+                  disabled={isSolving}
+                  className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" aria-hidden="true" />
+                  <span>{isSolving ? "Evaluating Conflicts..." : "Run AI Conflict Solver"}</span>
+                </button>
+              </div>
             </div>
 
-            {/* Conflicting Requests Cards */}
+            {/* Competing Requests Grid */}
             <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -441,7 +487,7 @@ export default function App() {
                   <span>Conflicting Slot Competition: NVIDIA Jetson AGX Orin DevKit</span>
                 </h2>
                 <span className="text-xs text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2.5 py-1 rounded-full font-medium">
-                  3 Overlapping Requests • Single Primary Window (10:00 AM - 01:00 PM)
+                  3 Competing Requests • 1 Shared Primary Slot (10:00 AM - 01:00 PM)
                 </span>
               </div>
 
@@ -489,18 +535,24 @@ export default function App() {
               </div>
             </div>
 
-            {/* AI Decision Report */}
+            {/* AI Decision Report with Explainable AI Card */}
             {aiReport && (
-              <div className="bg-[#0f172a] border border-emerald-500/50 rounded-2xl p-6 space-y-4 shadow-xl">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400" aria-hidden="true" />
-                  <h2 className="text-xl font-bold text-white">Recommended Fair Allocation Decision</h2>
+              <div className="bg-[#0f172a] border border-emerald-500/50 rounded-2xl p-6 space-y-5 shadow-xl">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400" aria-hidden="true" />
+                    <h2 className="text-xl font-bold text-white">Recommended Fair Allocation Decision</h2>
+                  </div>
+                  <span className="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-semibold">
+                    Winner Score: {aiReport.winner.compositeScore}/100
+                  </span>
                 </div>
 
                 <div className="text-sm text-emerald-200 bg-emerald-950/40 border border-emerald-800/50 p-4 rounded-xl leading-relaxed">
                   {aiReport.explanation}
                 </div>
 
+                {/* Score Breakdown Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   {/* Primary Winner Card */}
                   <div className="bg-[#070b14] border border-emerald-800/60 p-4 rounded-xl space-y-2">
@@ -509,7 +561,7 @@ export default function App() {
                     </span>
                     <p className="text-base font-bold text-white">{aiReport.winner.studentName}</p>
                     <p className="text-slate-300 font-medium">{aiReport.winner.projectTitle}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-300 pt-1">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-300 pt-1 flex-wrap">
                       <span className="bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
                         Deadline: {aiReport.winner.scoreBreakdown?.deadlineScore}/50 pts
                       </span>
@@ -523,7 +575,7 @@ export default function App() {
                     <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-slate-400">
                       <span>{aiReport.allocatedSlot}</span>
                       <span className="text-emerald-400 font-semibold text-sm">
-                        Composite Score: {aiReport.winner.compositeScore}/100
+                        Total: {aiReport.winner.compositeScore}/100
                       </span>
                     </div>
                   </div>
@@ -561,33 +613,34 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 3: Faculty Portal & Approval Queue */}
+        {/* Tab 3: Faculty Portal & Gate Pass Generation */}
         {activeTab === "faculty-portal" && (
           <section aria-labelledby="faculty-heading" className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h1 id="faculty-heading" className="text-2xl font-bold text-white tracking-tight">
-                  Faculty Approval Queue & Lab Management
+                  Faculty Approval Queue & Lab Pass Issuance
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Review student project credentials, safety compliance, and approve cross-department lab slots.
+                  Authorize student reservations, assign laboratory benches, and issue cryptographically verifiable Digital Lab Gate Passes.
                 </p>
               </div>
               <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-400">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                <span>Authorized Faculty Console</span>
+                <span>Faculty Authorization Station</span>
               </div>
             </div>
 
             <div className="bg-[#0f172a] border border-slate-800 rounded-2xl divide-y divide-slate-800 text-xs shadow-lg">
-              {conflicts.map((item) => {
+              {conflicts.map((item, idx) => {
                 const status = facultyStatuses[item.id] || "Pending";
+                const benchAssign = `Bench-0${idx + 2}B (Autonomous Systems Bay)`;
                 return (
                   <div
                     key={item.id}
                     className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-900/40 transition"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white text-sm">
                           {item.studentName}
@@ -618,22 +671,22 @@ export default function App() {
                         <strong className="text-slate-400">Project Scope:</strong> {item.projectTitle} — {item.projectScope}
                       </p>
                       <p className="text-slate-400 text-[11px]">
-                        Deadline in {item.deadlineDaysRemaining} days • Faculty Guide: {item.guideName} • Prior Month: {item.priorMonthlyBookings} bookings
+                        Deadline in {item.deadlineDaysRemaining} days • Faculty Guide: {item.guideName} • Prior Month Bookings: {item.priorMonthlyBookings}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => handleApprove(item.id)}
-                        className={`px-3.5 py-2 rounded-lg font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
+                        onClick={() => handleApproveAndIssuePass(item, benchAssign)}
+                        className={`px-4 py-2 rounded-lg font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
                           status === "Approved"
-                            ? "bg-emerald-700 text-white cursor-default"
-                            : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                            ? "bg-emerald-700 hover:bg-emerald-600 text-white"
+                            : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/30"
                         }`}
                       >
                         <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>{status === "Approved" ? "Approved" : "Approve Slot"}</span>
+                        <span>{status === "Approved" ? "View Lab Pass" : "Approve & Issue Pass"}</span>
                       </button>
 
                       <button
@@ -652,121 +705,127 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 4: Resource Utilization & Optimization Dashboard */}
-        {activeTab === "utilization-dashboard" && (
+        {/* Tab 4: Comprehensive Campus Resource Utilization Dashboard */}
+        {activeTab === "utilization" && (
           <section aria-labelledby="metrics-heading" className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h1 id="metrics-heading" className="text-2xl font-bold text-white tracking-tight">
-                  Campus Lab Resource Utilization & Optimization
+                  Campus Laboratory Resource Utilization Dashboard
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Real-time analytics on inter-departmental equipment sharing, peak-hour bottlenecks, and idle workstation reduction.
+                  Cross-departmental sharing analytics, CapEx savings, idle workstation reclamation, and hourly bottleneck distribution.
                 </p>
               </div>
               <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300">
                 <TrendingUp className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                <span>Optimized Scheduling Active</span>
+                <span>Inter-Departmental Optimization Active</span>
               </div>
             </div>
 
-            {/* Top Stat KPI Cards */}
+            {/* Top KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs uppercase tracking-wide">Overall Utilization</span>
-                  <Activity className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                  <span className="text-xs uppercase tracking-wide">Reclaimed Idle Hours</span>
+                  <Clock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
                 </div>
-                <div className="text-2xl font-bold text-white">{initialCampusMetrics.overallUtilization}%</div>
+                <div className="text-3xl font-bold text-cyan-400">{campusMetrics.reclaimedIdleHours} hrs</div>
                 <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" aria-hidden="true" />
-                  <span>+12.6% vs single-dept silo models</span>
+                  <span>+34.2% reduction in downtime</span>
                 </p>
               </div>
 
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs uppercase tracking-wide">Idle Time Reduction</span>
-                  <Clock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                  <span className="text-xs uppercase tracking-wide">CapEx Saved</span>
+                  <Award className="w-4 h-4 text-amber-400" aria-hidden="true" />
                 </div>
-                <div className="text-2xl font-bold text-cyan-400">{initialCampusMetrics.idleReductionPercentage}</div>
-                <p className="text-[11px] text-slate-400 mt-1">Via automated backup routing</p>
+                <div className="text-3xl font-bold text-amber-300">{campusMetrics.capexSavedINR}</div>
+                <p className="text-[11px] text-slate-400 mt-1">Avoided duplicate procurement</p>
               </div>
 
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs uppercase tracking-wide">Shared Workstations</span>
-                  <Layers className="w-4 h-4 text-amber-400" aria-hidden="true" />
+                  <span className="text-xs uppercase tracking-wide">Cross-Dept Sharing Index</span>
+                  <Layers className="w-4 h-4 text-indigo-400" aria-hidden="true" />
                 </div>
-                <div className="text-2xl font-bold text-white">{initialCampusMetrics.activeSharedNodes} Nodes</div>
-                <p className="text-[11px] text-slate-400 mt-1">Across 6 college departments</p>
+                <div className="text-3xl font-bold text-white">{campusMetrics.crossDeptSharingIndex}</div>
+                <p className="text-[11px] text-indigo-300 mt-1">142 cross-department projects</p>
               </div>
 
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
                 <div className="flex items-center justify-between text-slate-400 mb-2">
-                  <span className="text-xs uppercase tracking-wide">Cross-Dept Bookings</span>
-                  <BookOpen className="w-4 h-4 text-purple-400" aria-hidden="true" />
+                  <span className="text-xs uppercase tracking-wide">Overall Lab Utilization</span>
+                  <Activity className="w-4 h-4 text-emerald-400" aria-hidden="true" />
                 </div>
-                <div className="text-2xl font-bold text-purple-300">{initialCampusMetrics.crossDeptCollaborations}</div>
-                <p className="text-[11px] text-slate-400 mt-1">Inter-departmental capstone projects</p>
+                <div className="text-3xl font-bold text-emerald-400">{campusMetrics.overallUtilization}%</div>
+                <p className="text-[11px] text-slate-400 mt-1">Target benchmark: &gt;85%</p>
               </div>
             </div>
 
-            {/* Peak Hours & Department Breakdown */}
+            {/* Department Sharing Matrix & Hourly Load Distribution */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Peak Hours Distribution */}
+              {/* Cross-Department Sharing Matrix */}
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
                 <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-                  <span>Campus Laboratory Load & Peak Hours Distribution</span>
+                  <BookOpen className="w-4 h-4 text-purple-400" aria-hidden="true" />
+                  <span>Cross-Department Sharing Matrix</span>
                 </h2>
-                <div className="space-y-4">
-                  {initialCampusMetrics.peakHours.map((slot) => (
-                    <div key={slot.period} className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-300 font-medium">{slot.period}</span>
-                        <span className="text-slate-400 font-mono">
-                          {slot.loadPercentage}% — {slot.label}
-                        </span>
+                <div className="space-y-3 text-xs">
+                  {campusMetrics.departmentSharingMatrix.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-[#0a0f1d] border border-slate-800 rounded-xl flex items-center justify-between gap-3"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 font-medium text-white">
+                          <span className="text-indigo-400">{item.sourceDept}</span>
+                          <span className="text-slate-500">→</span>
+                          <span className="text-cyan-400">{item.targetLab}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Hardware: {item.equipmentUsed}
+                        </p>
                       </div>
-                      <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            slot.loadPercentage >= 90
-                              ? "bg-rose-500"
-                              : slot.loadPercentage >= 75
-                              ? "bg-amber-400"
-                              : "bg-indigo-500"
-                          }`}
-                          style={{ width: `${slot.loadPercentage}%` }}
-                        />
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-emerald-400 text-sm">{item.hoursShared} hrs</span>
+                        <span className="block text-[10px] text-slate-500 uppercase">Shared</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Departmental Utilization Matrix */}
+              {/* Hourly Load Distribution (09:00 - 18:00) */}
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
                 <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-                  <span>Departmental Equipment Sharing Grid</span>
+                  <Clock className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                  <span>Peak vs. Off-Peak Hourly Occupancy Distribution</span>
                 </h2>
-                <div className="space-y-3 text-xs">
-                  {initialCampusMetrics.departmentBreakdown.map((dept) => (
-                    <div
-                      key={dept.department}
-                      className="flex items-center justify-between p-2.5 bg-[#0a0f1d] border border-slate-800/80 rounded-xl"
-                    >
-                      <div>
-                        <span className="font-semibold text-white block">{dept.department}</span>
-                        <span className="text-[11px] text-slate-400">
-                          {dept.activeNodes} Nodes • {dept.sharedProjects} shared projects
+                <div className="space-y-2.5">
+                  {campusMetrics.hourlyLoadDistribution.map((slot) => (
+                    <div key={slot.hour} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-300 font-mono">{slot.hour}:00</span>
+                        <span className="text-slate-400 font-mono">
+                          {slot.occupancy}% • {slot.status}
                         </span>
                       </div>
-                      <div className="text-right">
-                        <span className="font-bold text-emerald-400 text-sm">{dept.utilization}%</span>
-                        <span className="block text-[10px] text-slate-500 uppercase">Load factor</span>
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            slot.occupancy >= 90
+                              ? "bg-rose-500"
+                              : slot.occupancy >= 75
+                              ? "bg-amber-400"
+                              : slot.occupancy >= 60
+                              ? "bg-indigo-500"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${slot.occupancy}%` }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -781,7 +840,7 @@ export default function App() {
                 <span>GenAI Workstation Optimization Directives</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                {initialCampusMetrics.aiOptimizationTips.map((tip, idx) => (
+                {campusMetrics.aiOptimizationTips.map((tip, idx) => (
                   <div key={idx} className="bg-[#0a0f1d] border border-slate-800 p-4 rounded-xl flex gap-3 items-start">
                     <span className="w-5 h-5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center justify-center shrink-0 font-bold text-[10px]">
                       {idx + 1}
@@ -794,6 +853,194 @@ export default function App() {
           </section>
         )}
       </main>
+
+      {/* Digital Lab Gate Pass Modal */}
+      {isPassModalOpen && activeDigitalPass && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pass-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        >
+          <div className="bg-[#0f172a] border border-indigo-500/60 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setIsPassModalOpen(false)}
+              aria-label="Close digital lab pass modal"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-700 flex items-center justify-center">
+                <QrCode className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div>
+                <h2 id="pass-modal-title" className="text-lg font-bold text-white">
+                  Authorized Digital Lab Pass
+                </h2>
+                <span className="text-[10px] uppercase font-mono text-emerald-400">
+                  Status: {activeDigitalPass.status}
+                </span>
+              </div>
+            </div>
+
+            {/* SVG QR Code Simulation Vector */}
+            <div className="bg-white p-4 rounded-xl flex flex-col items-center justify-center mb-4">
+              <svg
+                width="140"
+                height="140"
+                viewBox="0 0 140 140"
+                className="mx-auto"
+                aria-label={`QR Code for pass ID ${activeDigitalPass.passId}`}
+                role="img"
+              >
+                {/* QR Code Corner Markers */}
+                <rect x="10" y="10" width="36" height="36" fill="#000" rx="4" />
+                <rect x="16" y="16" width="24" height="24" fill="#fff" rx="2" />
+                <rect x="22" y="22" width="12" height="12" fill="#000" rx="2" />
+
+                <rect x="94" y="10" width="36" height="36" fill="#000" rx="4" />
+                <rect x="100" y="16" width="24" height="24" fill="#fff" rx="2" />
+                <rect x="106" y="22" width="12" height="12" fill="#000" rx="2" />
+
+                <rect x="10" y="94" width="36" height="36" fill="#000" rx="4" />
+                <rect x="16" y="100" width="24" height="24" fill="#fff" rx="2" />
+                <rect x="22" y="106" width="12" height="12" fill="#000" rx="2" />
+
+                {/* Simulated Data Matrix Bits */}
+                <rect x="54" y="14" width="8" height="8" fill="#000" />
+                <rect x="66" y="26" width="8" height="8" fill="#000" />
+                <rect x="78" y="14" width="8" height="8" fill="#000" />
+                <rect x="54" y="38" width="8" height="8" fill="#000" />
+                <rect x="14" y="54" width="8" height="8" fill="#000" />
+                <rect x="26" y="66" width="8" height="8" fill="#000" />
+                <rect x="38" y="54" width="8" height="8" fill="#000" />
+                <rect x="54" y="54" width="32" height="32" fill="#000" rx="3" />
+                <rect x="62" y="62" width="16" height="16" fill="#fff" rx="2" />
+                <rect x="94" y="54" width="8" height="8" fill="#000" />
+                <rect x="106" y="66" width="8" height="8" fill="#000" />
+                <rect x="118" y="54" width="8" height="8" fill="#000" />
+                <rect x="54" y="94" width="8" height="8" fill="#000" />
+                <rect x="66" y="106" width="8" height="8" fill="#000" />
+                <rect x="78" y="94" width="8" height="8" fill="#000" />
+                <rect x="94" y="94" width="8" height="8" fill="#000" />
+                <rect x="106" y="106" width="8" height="8" fill="#000" />
+                <rect x="118" y="118" width="8" height="8" fill="#000" />
+              </svg>
+              <span className="text-[11px] font-mono text-slate-800 font-bold mt-2">
+                {activeDigitalPass.passId}
+              </span>
+            </div>
+
+            {/* Pass Metadata List */}
+            <div className="bg-[#0a0f1d] border border-slate-800 p-3.5 rounded-xl space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Student:</span>
+                <span className="font-bold text-white">{activeDigitalPass.studentName} ({activeDigitalPass.usn})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Department:</span>
+                <span className="text-indigo-300 font-medium">{activeDigitalPass.department}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Assigned Bench:</span>
+                <span className="text-cyan-400 font-semibold">{activeDigitalPass.benchNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Allocated Slot:</span>
+                <span className="text-white">{activeDigitalPass.slotDate} ({activeDigitalPass.timeSlot})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Faculty Sponsor:</span>
+                <span className="text-slate-200">{activeDigitalPass.facultySponsor}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-800/80 flex justify-between text-[11px]">
+                <span className="text-slate-400">Verification Hash:</span>
+                <span className="font-mono text-emerald-400">{activeDigitalPass.verificationHash}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPassModalOpen(false)}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+              >
+                Close Pass Viewer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Explainable AI (XAI) Model Specs Modal */}
+      {showXaiModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="xai-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        >
+          <div className="bg-[#0f172a] border border-indigo-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setShowXaiModal(false)}
+              aria-label="Close XAI modal"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+
+            <h2 id="xai-modal-title" className="text-xl font-bold text-white mb-2">
+              Explainable AI (XAI) Conflict Resolution Model
+            </h2>
+            <p className="text-xs text-slate-400 mb-4">
+              Transparent multi-criteria decision formula guaranteeing verifiable fairness across departments.
+            </p>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-[#0a0f1d] border border-slate-800 rounded-xl">
+                <span className="font-bold text-emerald-400 block mb-1">
+                  1. Project Deadline Proximity (Weight: 50%)
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Awards up to 50 points based on imminent submission windows (e.g. ≤2 days: 50pts, ≤4 days: 42pts, ≤7 days: 34pts) to prevent catastrophic student milestone failures.
+                </p>
+              </div>
+
+              <div className="p-3 bg-[#0a0f1d] border border-slate-800 rounded-xl">
+                <span className="font-bold text-indigo-400 block mb-1">
+                  2. Academic Urgency Severity (Weight: 30%)
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Evaluates project tier: Critical (Capstone / National Competition = 30pts), High (Mini-Project Milestone = 20pts), Normal (Standard Coursework = 10pts).
+                </p>
+              </div>
+
+              <div className="p-3 bg-[#0a0f1d] border border-slate-800 rounded-xl">
+                <span className="font-bold text-cyan-400 block mb-1">
+                  3. Resource Equity & Fairness (Weight: 20%)
+                </span>
+                <p className="text-slate-300 leading-relaxed">
+                  Penalizes heavy repeat usage to prevent hardware monopolization (0 prior bookings = 20pts full equity bonus, 5+ prior bookings = 4pts penalty).
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowXaiModal(false)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+              >
+                Close Specifications
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Project-Based Slot Request Modal */}
       {isModalOpen && (

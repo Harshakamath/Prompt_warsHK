@@ -4,7 +4,7 @@
  */
 
 /**
- * Sanitizes input text by stripping HTML tags / angle brackets (< >),
+ * Sanitizes input text by neutralizing script vectors, stripping HTML tags (< >),
  * removing null bytes, trimming whitespace, and bounding length.
  *
  * @param {any} str - Input string to sanitize
@@ -88,7 +88,7 @@ export function validateBookingPayload(data) {
     }
   }
 
-  // 5. Urgency Level (optional check if provided)
+  // 5. Urgency Level
   if (data.urgencyLevel) {
     const validLevels = ["normal", "high", "critical"];
     if (!validLevels.includes(String(data.urgencyLevel).toLowerCase())) {

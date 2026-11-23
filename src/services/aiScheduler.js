@@ -18,7 +18,8 @@ export function scoreRequest(req) {
   if (!req || typeof req !== "object") {
     return {
       compositeScore: 0,
-      scoreBreakdown: { deadlineScore: 0, urgencyScore: 0, fairnessScore: 0 }
+      scoreBreakdown: { deadlineScore: 0, urgencyScore: 0, fairnessScore: 0 },
+      xaiFormula: "0/100"
     };
   }
 
@@ -66,6 +67,7 @@ export function scoreRequest(req) {
   }
 
   const compositeScore = Math.min(100, Math.max(0, deadlineScore + urgencyScore + fairnessScore));
+  const xaiFormula = `${deadlineScore}pts (Deadline) + ${urgencyScore}pts (Urgency) + ${fairnessScore}pts (Equity) = ${compositeScore}/100`;
 
   return {
     ...req,
@@ -74,7 +76,8 @@ export function scoreRequest(req) {
       deadlineScore,
       urgencyScore,
       fairnessScore
-    }
+    },
+    xaiFormula
   };
 }
 
@@ -105,7 +108,7 @@ export function resolveAllocationConflict(competingRequests) {
     return {
       winner: scoredSingle,
       allocatedSlot: slotStr,
-      explanation: `Direct allocation granted to ${scoredSingle.studentName} (${scoredSingle.projectTitle}). No schedule competition detected for this workstation slot.`,
+      explanation: `Direct allocation granted to ${scoredSingle.studentName} (${scoredSingle.projectTitle}). Exact math: ${scoredSingle.xaiFormula}. No schedule competition detected for this workstation slot.`,
       suggestedAlternative: null,
       deferredRequests: [],
       rankings: [scoredSingle]
@@ -167,16 +170,13 @@ export function resolveAllocationConflict(competingRequests) {
     };
   });
 
-  const winnerPrior = winner.priorMonthlyBookings ?? winner.priorAllocationsThisMonth ?? 0;
-  const firstDeferredPrior = firstDeferred.priorMonthlyBookings ?? firstDeferred.priorAllocationsThisMonth ?? 0;
-
   const explanation =
     `Allocated primary slot to ${winner.studentName} (${winner.department}) with a top composite score of ` +
     `${winner.compositeScore}/100. Deciding rationale: immediate project deadline in ${winner.deadlineDaysRemaining} days ` +
     `(Urgency: ${winner.urgencyLevel}, awarded 50pts deadline + 30pts urgency), balanced against usage equity ` +
-    `(${winnerPrior} prior monthly allocations, 16pts equity). ` +
-    `${firstDeferred.studentName} (${firstDeferred.compositeScore}/100, ${firstDeferredPrior} prior bookings) has been ` +
-    `provisioned an automated priority alternative on ${formattedNextDate} with remote container backup.`;
+    `(${winner.scoreBreakdown.fairnessScore}pts equity). Math breakdown: [${winner.xaiFormula}]. ` +
+    `${firstDeferred.studentName} (${firstDeferred.compositeScore}/100) has been ` +
+    `provisioned an automated priority alternative on ${formattedNextDate} (02:00 PM - 05:00 PM) with secondary workstation backup: High-Performance Workstation Node 2 (Lab 501).`;
 
   return {
     winner,
@@ -185,5 +185,67 @@ export function resolveAllocationConflict(competingRequests) {
     suggestedAlternative,
     deferredRequests: deferredRequestsWithBackups,
     rankings: scoredList
+  };
+}
+
+/**
+ * Generates an authorized Digital Lab Gate Pass for a confirmed or faculty-approved reservation.
+ *
+ * @param {Object} request - Student request details
+ * @param {string} [benchNumber="Bench-04A"] - Assigned laboratory bench or node identifier
+ * @returns {Object|null} Authorized digital lab pass object
+ */
+export function generateDigitalLabPass(request, benchNumber = "Bench-04A") {
+  if (!request || typeof request !== "object") {
+    return null;
+  }
+
+  const rawEquipment = request.equipmentName || "JETSON";
+  let sanitizedTag = "LABKIT";
+  if (/jetson/i.test(rawEquipment)) {
+    sanitizedTag = "JETSON";
+  } else if (/zynq|fpga/i.test(rawEquipment)) {
+    sanitizedTag = "ZYNQ";
+  } else if (/formlabs|3d/i.test(rawEquipment)) {
+    sanitizedTag = "SLA3D";
+  } else if (/rtx|gpu|hpc/i.test(rawEquipment)) {
+    sanitizedTag = "RTXGPU";
+  } else if (/oscilloscope|dso/i.test(rawEquipment)) {
+    sanitizedTag = "OSCILL";
+  } else if (/pcr/i.test(rawEquipment)) {
+    sanitizedTag = "PCRBIO";
+  } else {
+    sanitizedTag = rawEquipment.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase() || "LABKIT";
+  }
+
+  const idSuffix = String(request.id || "901").replace(/[^0-9]/g, "") || "901";
+  const passId = `PASS-2026-${sanitizedTag}-${idSuffix.slice(-3)}`;
+
+  const timestamp = new Date().toISOString();
+  const assignedBench = benchNumber || "Bench-04A";
+
+  // Pseudo-hash verification token
+  const hashSeed = `${passId}:${request.usn}:${request.studentName}:${assignedBench}:${timestamp}`;
+  let hashNum = 0;
+  for (let i = 0; i < hashSeed.length; i++) {
+    hashNum = (hashNum << 5) - hashNum + hashSeed.charCodeAt(i);
+    hashNum |= 0;
+  }
+  const verificationHash = "0x" + Math.abs(hashNum).toString(16).padStart(8, "0") + "c4a9";
+
+  return {
+    passId,
+    studentName: request.studentName || "Authorized Student",
+    usn: request.usn || "1MS21CS001",
+    department: request.department || "Engineering",
+    projectTitle: request.projectTitle || "Specialized Lab Research Project",
+    equipmentName: request.equipmentName || "Campus Shared Hardware",
+    facultySponsor: request.guideName || "Department Faculty Guide",
+    benchNumber: assignedBench,
+    slotDate: request.slotDate || timestamp.split("T")[0],
+    timeSlot: request.timeSlot || "10:00 AM - 01:00 PM",
+    safetyClearanceTimestamp: timestamp,
+    verificationHash,
+    status: "AUTHORIZED_ACTIVE"
   };
 }

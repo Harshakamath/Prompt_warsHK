@@ -207,3 +207,28 @@ export const campusMetrics = {
 };
 
 export const initialCampusMetrics = campusMetrics;
+
+/**
+ * Canonical department list shared across the application.
+ * Import this instead of re-declaring locally in components.
+ */
+export const DEPARTMENTS = [
+  "All",
+  "Robotics & AI",
+  "ECE / VLSI",
+  "Mechanical",
+  "VLSI & Embedded",
+  "CSE / ISE",
+  "Biotechnology"
+];
+
+/**
+ * MCDA scoring weights used by the GenAI conflict resolver.
+ * Exported here so tests and UI can reference canonical values.
+ */
+export const SCORING_WEIGHTS = {
+  DEADLINE: 50,
+  URGENCY: 30,
+  EQUITY: 20,
+  TOTAL: 100
+};

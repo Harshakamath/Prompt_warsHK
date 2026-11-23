@@ -28,7 +28,8 @@ import {
 import {
   initialEquipment,
   sampleConflictingRequests,
-  campusMetrics
+  campusMetrics,
+  DEPARTMENTS
 } from "./data/labData";
 import {
   resolveAllocationConflict,
@@ -104,15 +105,8 @@ export default function App() {
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
 
-  const departments = [
-    "All",
-    "Robotics & AI",
-    "ECE / VLSI",
-    "Mechanical",
-    "VLSI & Embedded",
-    "CSE / ISE",
-    "Biotechnology"
-  ];
+  // Department list centralised in labData.js for single-source-of-truth
+  const departments = DEPARTMENTS;
 
   // Dynamic Live Utilization Calculation
   const liveUtilization = useMemo(() => {

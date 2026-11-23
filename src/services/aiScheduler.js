@@ -9,6 +9,17 @@
  * Total Composite Score: Max 100 points
  */
 
+import { SCORING_WEIGHTS } from "../data/labData.js";
+
+/**
+ * @const {number} MAX_DEADLINE_PTS - Max points for deadline proximity (canonical: SCORING_WEIGHTS.DEADLINE)
+ * @const {number} MAX_URGENCY_PTS  - Max points for urgency severity   (canonical: SCORING_WEIGHTS.URGENCY)
+ * @const {number} MAX_EQUITY_PTS   - Max points for resource equity     (canonical: SCORING_WEIGHTS.EQUITY)
+ */
+const MAX_DEADLINE_PTS = SCORING_WEIGHTS.DEADLINE; // 50
+const MAX_URGENCY_PTS  = SCORING_WEIGHTS.URGENCY;  // 30
+const MAX_EQUITY_PTS   = SCORING_WEIGHTS.EQUITY;   // 20
+
 /**
  * Computes individual criteria scores and total composite score for a lab request.
  * @param {Object} req - Slot request payload
@@ -23,11 +34,11 @@ export function scoreRequest(req) {
     };
   }
 
-  // 1. Deadline Proximity (Max 50 points)
+  // 1. Deadline Proximity (Max MAX_DEADLINE_PTS = 50 points)
   const days = typeof req.deadlineDaysRemaining === "number" ? req.deadlineDaysRemaining : 14;
   let deadlineScore = 10;
   if (days <= 2) {
-    deadlineScore = 50;
+    deadlineScore = MAX_DEADLINE_PTS; // 50
   } else if (days <= 4) {
     deadlineScore = 42;
   } else if (days <= 7) {
@@ -38,16 +49,16 @@ export function scoreRequest(req) {
     deadlineScore = 18;
   }
 
-  // 2. Academic Urgency Severity (Max 30 points)
+  // 2. Academic Urgency Severity (Max MAX_URGENCY_PTS = 30 points)
   const urgency = (req.urgencyLevel || "").toLowerCase().trim();
   let urgencyScore = 10;
   if (urgency === "critical") {
-    urgencyScore = 30;
+    urgencyScore = MAX_URGENCY_PTS; // 30
   } else if (urgency === "high") {
     urgencyScore = 20;
   }
 
-  // 3. Resource Equity & Fairness (Max 20 points)
+  // 3. Resource Equity & Fairness (Max MAX_EQUITY_PTS = 20 points)
   const priorBookings =
     typeof req.priorMonthlyBookings === "number"
       ? req.priorMonthlyBookings
@@ -57,7 +68,7 @@ export function scoreRequest(req) {
 
   let fairnessScore = 4;
   if (priorBookings === 0) {
-    fairnessScore = 20;
+    fairnessScore = MAX_EQUITY_PTS; // 20
   } else if (priorBookings === 1) {
     fairnessScore = 16;
   } else if (priorBookings === 2) {
@@ -66,8 +77,8 @@ export function scoreRequest(req) {
     fairnessScore = 8;
   }
 
-  const compositeScore = Math.min(100, Math.max(0, deadlineScore + urgencyScore + fairnessScore));
-  const xaiFormula = `${deadlineScore}pts (Deadline) + ${urgencyScore}pts (Urgency) + ${fairnessScore}pts (Equity) = ${compositeScore}/100`;
+  const compositeScore = Math.min(SCORING_WEIGHTS.TOTAL, Math.max(0, deadlineScore + urgencyScore + fairnessScore));
+  const xaiFormula = `${deadlineScore}pts (Deadline) + ${urgencyScore}pts (Urgency) + ${fairnessScore}pts (Equity) = ${compositeScore}/${SCORING_WEIGHTS.TOTAL}`;
 
   return {
     ...req,

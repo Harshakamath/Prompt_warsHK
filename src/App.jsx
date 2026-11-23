@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Cpu,
   Calendar,
@@ -12,9 +12,18 @@ import {
   Clock,
   ShieldCheck,
   Check,
-  RotateCcw
+  RotateCcw,
+  BarChart3,
+  TrendingUp,
+  Layers,
+  Activity,
+  BookOpen
 } from "lucide-react";
-import { initialEquipment, sampleConflictingRequests } from "./data/labData";
+import {
+  initialEquipment,
+  sampleConflictingRequests,
+  initialCampusMetrics
+} from "./data/labData";
 import { resolveAllocationConflict } from "./services/aiScheduler";
 import { sanitizeInput, validateBookingPayload } from "./utils/security";
 
@@ -32,6 +41,7 @@ export default function App() {
     usn: "",
     department: "Computer Science & ISE",
     projectTitle: "",
+    projectScope: "",
     deadline: "",
     urgencyLevel: "Normal",
     guideName: ""
@@ -44,7 +54,7 @@ export default function App() {
   const [aiReport, setAiReport] = useState(null);
   const [isSolving, setIsSolving] = useState(false);
 
-  // Faculty Approval Statuses
+  // Faculty Approval Statuses & Audit Records
   const [facultyStatuses, setFacultyStatuses] = useState({
     "REQ-2026-001": "Pending",
     "REQ-2026-002": "Pending",
@@ -72,17 +82,22 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isModalOpen]);
 
-  const filteredEquipment = equipmentList.filter((item) => {
-    const matchesDept =
-      selectedDept === "All" ||
-      item.department.toLowerCase().includes(selectedDept.toLowerCase());
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.specs.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.labRoom.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesDept && matchesSearch;
-  });
+  // Memoized filter for performance and efficiency
+  const filteredEquipment = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return equipmentList.filter((item) => {
+      const matchesDept =
+        selectedDept === "All" ||
+        item.department.toLowerCase().includes(selectedDept.toLowerCase());
+      const matchesSearch =
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        item.specs.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.labRoom.toLowerCase().includes(q);
+      return matchesDept && matchesSearch;
+    });
+  }, [equipmentList, selectedDept, searchQuery]);
 
   const handleOpenBooking = (equipment) => {
     setTargetEquipment(equipment);
@@ -109,12 +124,12 @@ export default function App() {
     }
 
     setBookingSuccess(
-      `Request successfully submitted for ${targetEquipment.name}. Routed to ${
+      `Project slot request logged for ${targetEquipment.name}. Routed to ${
         formData.guideName || "Department Faculty"
-      } for slot verification and lab safety sign-off.`
+      } for safety clearance and schedule reservation.`
     );
 
-    // Update available units locally if available
+    // Optimistically update available unit inventory if available
     if (targetEquipment && targetEquipment.availableUnits > 0) {
       setEquipmentList((prev) =>
         prev.map((eq) =>
@@ -132,6 +147,7 @@ export default function App() {
         usn: "",
         department: "Computer Science & ISE",
         projectTitle: "",
+        projectScope: "",
         deadline: "",
         urgencyLevel: "Normal",
         guideName: ""
@@ -146,7 +162,7 @@ export default function App() {
       const report = resolveAllocationConflict(conflicts);
       setAiReport(report);
       setIsSolving(false);
-    }, 400);
+    }, 350);
   };
 
   const handleApprove = (id) => {
@@ -159,19 +175,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
-      {/* Skip to Main Content Accessibility Link */}
+      {/* WCAG 2.1 AA Skip to Content Link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-white"
       >
         Skip to main content
       </a>
 
-      {/* Header & Main Navigation */}
+      {/* Main Accessible Header */}
       <header className="border-b border-slate-800 bg-[#0c1222]/95 backdrop-blur sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
               <Cpu className="w-6 h-6 text-white" aria-hidden="true" />
             </div>
             <div>
@@ -224,19 +240,31 @@ export default function App() {
             >
               Faculty Portal
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("utilization-dashboard")}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                activeTab === "utilization-dashboard"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800/80"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+              <span>Utilization Dashboard</span>
+            </button>
           </nav>
         </div>
       </header>
 
-      {/* Main Content Sections */}
+      {/* Main Content Area */}
       <main id="main-content" className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab 1: Equipment Catalog */}
+        {/* Tab 1: Equipment Catalog & Discovery */}
         {activeTab === "catalog" && (
           <section aria-labelledby="catalog-heading" className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 id="catalog-heading" className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Cross-Department Laboratory Hardware
+                  Cross-Department Laboratory Resource Discovery
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
                   Discover specialized laboratory hardware, kits, and high-performance workstations across campus departments.
@@ -244,13 +272,13 @@ export default function App() {
               </div>
               <div className="flex items-center gap-4 bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl text-xs shrink-0">
                 <div>
-                  <span className="block text-slate-400 text-[11px]">Active Systems</span>
-                  <span className="font-semibold text-white text-sm">{equipmentList.length} Nodes</span>
+                  <span className="block text-slate-400 text-[11px]">Active Shared Nodes</span>
+                  <span className="font-semibold text-white text-sm">{initialCampusMetrics.activeSharedNodes} Nodes</span>
                 </div>
                 <div className="h-7 w-px bg-slate-800" />
                 <div>
                   <span className="block text-slate-400 text-[11px]">Campus Utilization</span>
-                  <span className="font-semibold text-emerald-400 text-sm">88.4%</span>
+                  <span className="font-semibold text-emerald-400 text-sm">{initialCampusMetrics.overallUtilization}%</span>
                 </div>
               </div>
             </div>
@@ -264,7 +292,7 @@ export default function App() {
                   placeholder="Search Jetson, FPGA, 3D printer, specs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search laboratory equipment by name, category, or specs"
+                  aria-label="Search laboratory equipment by name, category, specs, or location"
                   className="w-full bg-[#070b14] border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -336,6 +364,8 @@ export default function App() {
                       <p className="text-xs text-cyan-400 mb-3 flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                         <span>{item.labRoom}</span>
+                        <span className="text-slate-500">•</span>
+                        <span className="text-slate-400">Lead: {item.leadFaculty}</span>
                       </p>
 
                       <div className="space-y-2.5 text-xs text-slate-300 mb-5 bg-[#0a0f1d] p-3 rounded-xl border border-slate-800/80">
@@ -350,6 +380,10 @@ export default function App() {
                             Prerequisites & Safety:
                           </strong>
                           <span className="text-slate-300">{item.prerequisites}</span>
+                        </div>
+                        <div className="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/60">
+                          <span>Duty Utilization:</span>
+                          <span className="font-semibold text-emerald-400">{item.hourlyUtilization}%</span>
                         </div>
                       </div>
                     </div>
@@ -369,7 +403,7 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 2: AI Conflict Resolver */}
+        {/* Tab 2: GenAI Conflict Resolver */}
         {activeTab === "conflict-resolver" && (
           <section aria-labelledby="resolver-heading" className="space-y-6">
             <div className="bg-[#0f172a] border border-indigo-800/60 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -379,11 +413,13 @@ export default function App() {
                     GenAI Scheduling & Conflict Resolver
                   </h1>
                   <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-700/60 rounded-full">
-                    Multi-Criteria AI
+                    MCDA 100-Point Model
                   </span>
                 </div>
-                <p className="text-sm text-slate-400 mt-1">
-                  Resolves overlapping laboratory requests by balancing project deadline proximity (40%), urgency level (35%), and prior usage equity (25%).
+                <p className="text-sm text-slate-400 mt-1 max-w-2xl">
+                  Resolves overlapping laboratory requests by balancing <strong className="text-slate-200">Deadline Proximity (50pts)</strong>,{" "}
+                  <strong className="text-slate-200">Urgency Severity (30pts)</strong>, and{" "}
+                  <strong className="text-slate-200">Resource Usage Equity (20pts)</strong>.
                 </p>
               </div>
               <button
@@ -393,25 +429,25 @@ export default function App() {
                 className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 <Sparkles className="w-4 h-4 text-amber-300" aria-hidden="true" />
-                <span>{isSolving ? "Analyzing Conflicts..." : "Run AI Conflict Solver"}</span>
+                <span>{isSolving ? "Optimizing Allocations..." : "Run AI Conflict Solver"}</span>
               </button>
             </div>
 
-            {/* Conflicting Requests Showcase */}
+            {/* Conflicting Requests Cards */}
             <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-amber-400" aria-hidden="true" />
-                  <span>Conflicting Slot Requests: NVIDIA Jetson AGX Orin DevKit</span>
+                  <span>Conflicting Slot Competition: NVIDIA Jetson AGX Orin DevKit</span>
                 </h2>
                 <span className="text-xs text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2.5 py-1 rounded-full font-medium">
-                  3 Competing Requests • 1 Shared Slot
+                  3 Overlapping Requests • Single Primary Window (10:00 AM - 01:00 PM)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                 {conflicts.map((req) => (
-                  <div key={req.id} className="bg-[#0a0f1d] border border-slate-800 p-4 rounded-xl flex flex-col justify-between space-y-2">
+                  <div key={req.id} className="bg-[#0a0f1d] border border-slate-800 p-4 rounded-xl flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex justify-between items-start gap-1">
                         <span className="font-bold text-white text-sm">
@@ -435,6 +471,9 @@ export default function App() {
                       <p className="text-slate-200 font-medium mt-2">
                         {req.projectTitle}
                       </p>
+                      <p className="text-slate-400 text-[11px] mt-1 line-clamp-2">
+                        {req.projectScope}
+                      </p>
                     </div>
 
                     <div className="pt-2 border-t border-slate-800/80 space-y-1 text-slate-400">
@@ -442,8 +481,8 @@ export default function App() {
                         <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                         <span>Deadline: {req.deadlineDaysRemaining} days remaining</span>
                       </p>
-                      <p>Guide: {req.guideName}</p>
-                      <p>Prior monthly bookings: <strong className="text-white">{req.priorMonthlyBookings}</strong></p>
+                      <p>Faculty Guide: {req.guideName}</p>
+                      <p>Prior monthly allocations: <strong className="text-white">{req.priorMonthlyBookings}</strong></p>
                     </div>
                   </div>
                 ))}
@@ -470,10 +509,21 @@ export default function App() {
                     </span>
                     <p className="text-base font-bold text-white">{aiReport.winner.studentName}</p>
                     <p className="text-slate-300 font-medium">{aiReport.winner.projectTitle}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-300 pt-1">
+                      <span className="bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
+                        Deadline: {aiReport.winner.scoreBreakdown?.deadlineScore}/50 pts
+                      </span>
+                      <span className="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded border border-indigo-800">
+                        Urgency: {aiReport.winner.scoreBreakdown?.urgencyScore}/30 pts
+                      </span>
+                      <span className="bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded border border-cyan-800">
+                        Equity: {aiReport.winner.scoreBreakdown?.fairnessScore}/20 pts
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-slate-400">
                       <span>{aiReport.allocatedSlot}</span>
                       <span className="text-emerald-400 font-semibold text-sm">
-                        Score: {aiReport.winner.compositeScore}/100
+                        Composite Score: {aiReport.winner.compositeScore}/100
                       </span>
                     </div>
                   </div>
@@ -482,7 +532,7 @@ export default function App() {
                   {aiReport.suggestedAlternative && (
                     <div className="bg-[#070b14] border border-cyan-800/60 p-4 rounded-xl space-y-2">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 block">
-                        Alternative Slot & Backup Allocation
+                        Alternative Slot & Workstation Backup
                       </span>
                       <p className="text-base font-bold text-white">
                         {aiReport.suggestedAlternative.student}
@@ -490,11 +540,18 @@ export default function App() {
                       <p className="text-slate-300 font-medium">
                         {aiReport.suggestedAlternative.suggestedDate} ({aiReport.suggestedAlternative.suggestedSlot})
                       </p>
-                      <div className="pt-2 border-t border-slate-800 text-slate-400">
-                        <span className="block text-[11px] uppercase tracking-wide text-cyan-500 font-semibold mb-0.5">
-                          Workstation Backup:
-                        </span>
-                        <span>{aiReport.suggestedAlternative.workstationBackup}</span>
+                      <div className="pt-2 border-t border-slate-800 text-slate-400 space-y-1">
+                        <div>
+                          <span className="block text-[11px] uppercase tracking-wide text-cyan-500 font-semibold mb-0.5">
+                            Workstation Backup:
+                          </span>
+                          <span>{aiReport.suggestedAlternative.workstationBackup}</span>
+                        </div>
+                        {aiReport.suggestedAlternative.reasoning && (
+                          <p className="text-slate-500 text-[11px]">
+                            {aiReport.suggestedAlternative.reasoning}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
@@ -504,7 +561,7 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 3: Faculty Portal */}
+        {/* Tab 3: Faculty Portal & Approval Queue */}
         {activeTab === "faculty-portal" && (
           <section aria-labelledby="faculty-heading" className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -555,10 +612,10 @@ export default function App() {
                       </div>
 
                       <p className="text-slate-300 font-medium">
-                        <strong className="text-slate-400">Equipment:</strong> {item.equipmentName}
+                        <strong className="text-slate-400">Target Hardware:</strong> {item.equipmentName}
                       </p>
                       <p className="text-slate-300">
-                        <strong className="text-slate-400">Project:</strong> {item.projectTitle}
+                        <strong className="text-slate-400">Project Scope:</strong> {item.projectTitle} — {item.projectScope}
                       </p>
                       <p className="text-slate-400 text-[11px]">
                         Deadline in {item.deadlineDaysRemaining} days • Faculty Guide: {item.guideName} • Prior Month: {item.priorMonthlyBookings} bookings
@@ -576,7 +633,7 @@ export default function App() {
                         }`}
                       >
                         <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>{status === "Approved" ? "Approved" : "Approve"}</span>
+                        <span>{status === "Approved" ? "Approved" : "Approve Slot"}</span>
                       </button>
 
                       <button
@@ -591,6 +648,148 @@ export default function App() {
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* Tab 4: Resource Utilization & Optimization Dashboard */}
+        {activeTab === "utilization-dashboard" && (
+          <section aria-labelledby="metrics-heading" className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 id="metrics-heading" className="text-2xl font-bold text-white tracking-tight">
+                  Campus Lab Resource Utilization & Optimization
+                </h1>
+                <p className="text-sm text-slate-400 mt-1">
+                  Real-time analytics on inter-departmental equipment sharing, peak-hour bottlenecks, and idle workstation reduction.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300">
+                <TrendingUp className="w-4 h-4 text-emerald-400" aria-hidden="true" />
+                <span>Optimized Scheduling Active</span>
+              </div>
+            </div>
+
+            {/* Top Stat KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between text-slate-400 mb-2">
+                  <span className="text-xs uppercase tracking-wide">Overall Utilization</span>
+                  <Activity className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                </div>
+                <div className="text-2xl font-bold text-white">{initialCampusMetrics.overallUtilization}%</div>
+                <p className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" aria-hidden="true" />
+                  <span>+12.6% vs single-dept silo models</span>
+                </p>
+              </div>
+
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between text-slate-400 mb-2">
+                  <span className="text-xs uppercase tracking-wide">Idle Time Reduction</span>
+                  <Clock className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                </div>
+                <div className="text-2xl font-bold text-cyan-400">{initialCampusMetrics.idleReductionPercentage}</div>
+                <p className="text-[11px] text-slate-400 mt-1">Via automated backup routing</p>
+              </div>
+
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between text-slate-400 mb-2">
+                  <span className="text-xs uppercase tracking-wide">Shared Workstations</span>
+                  <Layers className="w-4 h-4 text-amber-400" aria-hidden="true" />
+                </div>
+                <div className="text-2xl font-bold text-white">{initialCampusMetrics.activeSharedNodes} Nodes</div>
+                <p className="text-[11px] text-slate-400 mt-1">Across 6 college departments</p>
+              </div>
+
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-5">
+                <div className="flex items-center justify-between text-slate-400 mb-2">
+                  <span className="text-xs uppercase tracking-wide">Cross-Dept Bookings</span>
+                  <BookOpen className="w-4 h-4 text-purple-400" aria-hidden="true" />
+                </div>
+                <div className="text-2xl font-bold text-purple-300">{initialCampusMetrics.crossDeptCollaborations}</div>
+                <p className="text-[11px] text-slate-400 mt-1">Inter-departmental capstone projects</p>
+              </div>
+            </div>
+
+            {/* Peak Hours & Department Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Peak Hours Distribution */}
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
+                <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-400" aria-hidden="true" />
+                  <span>Campus Laboratory Load & Peak Hours Distribution</span>
+                </h2>
+                <div className="space-y-4">
+                  {initialCampusMetrics.peakHours.map((slot) => (
+                    <div key={slot.period} className="space-y-1.5">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-300 font-medium">{slot.period}</span>
+                        <span className="text-slate-400 font-mono">
+                          {slot.loadPercentage}% — {slot.label}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            slot.loadPercentage >= 90
+                              ? "bg-rose-500"
+                              : slot.loadPercentage >= 75
+                              ? "bg-amber-400"
+                              : "bg-indigo-500"
+                          }`}
+                          style={{ width: `${slot.loadPercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Departmental Utilization Matrix */}
+              <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
+                <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+                  <span>Departmental Equipment Sharing Grid</span>
+                </h2>
+                <div className="space-y-3 text-xs">
+                  {initialCampusMetrics.departmentBreakdown.map((dept) => (
+                    <div
+                      key={dept.department}
+                      className="flex items-center justify-between p-2.5 bg-[#0a0f1d] border border-slate-800/80 rounded-xl"
+                    >
+                      <div>
+                        <span className="font-semibold text-white block">{dept.department}</span>
+                        <span className="text-[11px] text-slate-400">
+                          {dept.activeNodes} Nodes • {dept.sharedProjects} shared projects
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-emerald-400 text-sm">{dept.utilization}%</span>
+                        <span className="block text-[10px] text-slate-500 uppercase">Load factor</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* GenAI Resource Optimization Insights */}
+            <div className="bg-[#0f172a] border border-indigo-800/60 rounded-2xl p-6">
+              <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-300" aria-hidden="true" />
+                <span>GenAI Workstation Optimization Directives</span>
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                {initialCampusMetrics.aiOptimizationTips.map((tip, idx) => (
+                  <div key={idx} className="bg-[#0a0f1d] border border-slate-800 p-4 rounded-xl flex gap-3 items-start">
+                    <span className="w-5 h-5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center justify-center shrink-0 font-bold text-[10px]">
+                      {idx + 1}
+                    </span>
+                    <p className="text-slate-300 leading-relaxed">{tip}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -693,13 +892,28 @@ export default function App() {
                     aria-invalid={!!formErrors.projectTitle}
                     aria-describedby={formErrors.projectTitle ? "projectTitle-error" : undefined}
                     className="w-full bg-[#070b14] border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Low-Latency Drone Obstacle Avoidance"
+                    placeholder="e.g. Edge TensorRT UAV Obstacle Avoidance"
                   />
                   {formErrors.projectTitle && (
                     <span id="projectTitle-error" className="text-rose-400 mt-1 block">
                       {formErrors.projectTitle}
                     </span>
                   )}
+                </div>
+
+                <div>
+                  <label htmlFor="projectScope" className="block text-slate-300 font-medium mb-1">
+                    Project Scope & Workstation Needs
+                  </label>
+                  <textarea
+                    id="projectScope"
+                    name="projectScope"
+                    rows={2}
+                    value={formData.projectScope}
+                    onChange={handleFormChange}
+                    className="w-full bg-[#070b14] border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Describe specific models, sensors, libraries, and hardware interfaces required..."
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -779,7 +993,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
+      {/* Accessible Footer */}
       <footer className="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
         LabLink • Campus Laboratory Resource Grid • PromptWars Hackathon
       </footer>

@@ -1,32 +1,33 @@
 /**
- * LabLink Security & Input Validation Utilities
- * Defends against XSS, injection vectors, and malformed booking payloads.
+ * LabLink Security & Payload Validation Utilities
+ * Enforces XSS defense, strict schema boundary validation, and payload integrity.
  */
 
 /**
- * Sanitizes input string by stripping angle brackets (< >), trimming whitespace,
- * and enforcing maximum string length.
- * @param {any} str - Input to sanitize
+ * Sanitizes input text by stripping HTML tags / angle brackets (< >),
+ * removing null bytes, trimming whitespace, and bounding length.
+ *
+ * @param {any} str - Input string to sanitize
  * @param {number} [maxLength=200] - Maximum allowed length
- * @returns {string} Sanitized string
+ * @returns {string} Sanitized clean string
  */
 export function sanitizeInput(str, maxLength = 200) {
   if (str === null || str === undefined) {
     return "";
   }
   const inputStr = typeof str === "string" ? str : String(str);
-  // Strip angle brackets (< and >)
-  const stripped = inputStr.replace(/[<>]/g, "");
+  // Strip null bytes and angle brackets (< and >)
+  const stripped = inputStr.replace(/\0/g, "").replace(/[<>]/g, "");
   // Trim surrounding whitespace
   const trimmed = stripped.trim();
-  // Enforce maximum length limit
+  // Bound max length
   return trimmed.slice(0, maxLength);
 }
 
 /**
- * Validates a project-based lab slot booking payload.
- * Checks student name, college USN/ID, project title, and deadline date.
- * @param {Object} data - Booking payload
+ * Validates laboratory slot booking submissions against schema constraints.
+ *
+ * @param {Object} data - Form submission payload
  * @returns {{ isValid: boolean, errors: Object<string, string> }}
  */
 export function validateBookingPayload(data) {
@@ -35,11 +36,11 @@ export function validateBookingPayload(data) {
   if (!data || typeof data !== "object") {
     return {
       isValid: false,
-      errors: { general: "Invalid booking submission payload." }
+      errors: { general: "Invalid submission payload structure." }
     };
   }
 
-  // Student Name
+  // 1. Student Name
   const name = typeof data.studentName === "string" ? data.studentName.trim() : "";
   if (!name) {
     errors.studentName = "Student name is required.";
@@ -51,7 +52,7 @@ export function validateBookingPayload(data) {
     errors.studentName = "Student name contains invalid characters.";
   }
 
-  // College USN / ID
+  // 2. College USN / Student ID
   const usn = typeof data.usn === "string" ? data.usn.trim() : "";
   if (!usn) {
     errors.usn = "College USN / Student ID is required.";
@@ -59,7 +60,7 @@ export function validateBookingPayload(data) {
     errors.usn = "Enter a valid USN / Student ID (3-25 alphanumeric characters).";
   }
 
-  // Project Title
+  // 3. Project Title
   const title = typeof data.projectTitle === "string" ? data.projectTitle.trim() : "";
   if (!title) {
     errors.projectTitle = "Project title is required.";
@@ -69,22 +70,29 @@ export function validateBookingPayload(data) {
     errors.projectTitle = "Project title cannot exceed 150 characters.";
   }
 
-  // Deadline Date
+  // 4. Project Deadline Date
   const deadlineStr = typeof data.deadline === "string" ? data.deadline.trim() : "";
   if (!deadlineStr) {
     errors.deadline = "Project deadline date is required.";
   } else {
     const parsedDate = new Date(deadlineStr);
     if (isNaN(parsedDate.getTime())) {
-      errors.deadline = "Please provide a valid date for project deadline.";
+      errors.deadline = "Please provide a valid deadline date.";
     } else {
-      // Check if deadline is before start of today (midnight local time)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const targetDate = new Date(deadlineStr + (deadlineStr.includes("T") ? "" : "T00:00:00"));
       if (targetDate < today) {
         errors.deadline = "Project deadline cannot be in the past.";
       }
+    }
+  }
+
+  // 5. Urgency Level (optional check if provided)
+  if (data.urgencyLevel) {
+    const validLevels = ["normal", "high", "critical"];
+    if (!validLevels.includes(String(data.urgencyLevel).toLowerCase())) {
+      errors.urgencyLevel = "Urgency level must be Normal, High, or Critical.";
     }
   }
 

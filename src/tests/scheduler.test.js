@@ -3,43 +3,89 @@ import { resolveAllocationConflict, scoreRequest } from "../services/aiScheduler
 import { sanitizeInput, validateBookingPayload } from "../utils/security";
 import { sampleConflictingRequests } from "../data/labData";
 
+describe("AI Scheduler Scoring Criteria (50/30/20 MCDA Model)", () => {
+  it("should calculate composite score correctly with 50/30/20 max weights", () => {
+    const scored = scoreRequest({
+      studentName: "Aarav Sharma",
+      deadlineDaysRemaining: 2, // 50 pts
+      urgencyLevel: "Critical",  // 30 pts
+      priorMonthlyBookings: 0    // 20 pts
+    });
+
+    expect(scored.compositeScore).toBe(100);
+    expect(scored.scoreBreakdown.deadlineScore).toBe(50);
+    expect(scored.scoreBreakdown.urgencyScore).toBe(30);
+    expect(scored.scoreBreakdown.fairnessScore).toBe(20);
+  });
+
+  it("should award deadline points according to proximity brackets", () => {
+    expect(scoreRequest({ deadlineDaysRemaining: 1 }).scoreBreakdown.deadlineScore).toBe(50);
+    expect(scoreRequest({ deadlineDaysRemaining: 2 }).scoreBreakdown.deadlineScore).toBe(50);
+    expect(scoreRequest({ deadlineDaysRemaining: 4 }).scoreBreakdown.deadlineScore).toBe(42);
+    expect(scoreRequest({ deadlineDaysRemaining: 7 }).scoreBreakdown.deadlineScore).toBe(34);
+    expect(scoreRequest({ deadlineDaysRemaining: 10 }).scoreBreakdown.deadlineScore).toBe(26);
+    expect(scoreRequest({ deadlineDaysRemaining: 14 }).scoreBreakdown.deadlineScore).toBe(18);
+    expect(scoreRequest({ deadlineDaysRemaining: 20 }).scoreBreakdown.deadlineScore).toBe(10);
+  });
+
+  it("should award urgency points according to severity tiers", () => {
+    expect(scoreRequest({ urgencyLevel: "Critical" }).scoreBreakdown.urgencyScore).toBe(30);
+    expect(scoreRequest({ urgencyLevel: "High" }).scoreBreakdown.urgencyScore).toBe(20);
+    expect(scoreRequest({ urgencyLevel: "Normal" }).scoreBreakdown.urgencyScore).toBe(10);
+    expect(scoreRequest({ urgencyLevel: "other" }).scoreBreakdown.urgencyScore).toBe(10);
+  });
+
+  it("should penalize frequent prior bookings to preserve equity", () => {
+    expect(scoreRequest({ priorMonthlyBookings: 0 }).scoreBreakdown.fairnessScore).toBe(20);
+    expect(scoreRequest({ priorMonthlyBookings: 1 }).scoreBreakdown.fairnessScore).toBe(16);
+    expect(scoreRequest({ priorMonthlyBookings: 2 }).scoreBreakdown.fairnessScore).toBe(12);
+    expect(scoreRequest({ priorMonthlyBookings: 3 }).scoreBreakdown.fairnessScore).toBe(8);
+    expect(scoreRequest({ priorMonthlyBookings: 5 }).scoreBreakdown.fairnessScore).toBe(4);
+  });
+});
+
 describe("AI Conflict Resolver (resolveAllocationConflict)", () => {
-  it("should select the optimal slot winner based on deadline, urgency, and fairness", () => {
+  it("should select the optimal slot winner for sample conflicting requests", () => {
     const result = resolveAllocationConflict(sampleConflictingRequests);
 
     expect(result).toBeDefined();
     expect(result.winner).toBeDefined();
-    // REQ-2026-001 has 2 days deadline, Critical urgency, and 1 prior booking
+    // Aarav Sharma has 2 days deadline (50), Critical urgency (30), 1 prior booking (16) = 96
     expect(result.winner.id).toBe("REQ-2026-001");
     expect(result.winner.studentName).toBe("Aarav Sharma");
-    expect(result.winner.compositeScore).toBeGreaterThanOrEqual(90);
+    expect(result.winner.compositeScore).toBe(96);
   });
 
-  it("should penalize frequent prior bookings to ensure equity across students", () => {
-    const scoredHighUsage = scoreRequest({
-      studentName: "Frequent User",
-      deadlineDaysRemaining: 5,
+  it("should break ties fairly by deadline proximity and usage equity", () => {
+    // Exact score tie:
+    // candidate X: 42 (day 4) + 20 (High) + 16 (prior 1) = 78
+    // candidate Y: 50 (day 2) + 20 (High) + 8 (prior 3) = 78
+    const tieX = {
+      id: "TX",
+      studentName: "Candidate X",
+      deadlineDaysRemaining: 4,
       urgencyLevel: "High",
-      priorMonthlyBookings: 6
-    });
-
-    const scoredLowUsage = scoreRequest({
-      studentName: "First-Time User",
-      deadlineDaysRemaining: 5,
+      priorMonthlyBookings: 1
+    };
+    const tieY = {
+      id: "TY",
+      studentName: "Candidate Y",
+      deadlineDaysRemaining: 2,
       urgencyLevel: "High",
-      priorMonthlyBookings: 0
-    });
+      priorMonthlyBookings: 3
+    };
 
-    expect(scoredLowUsage.compositeScore).toBeGreaterThan(scoredHighUsage.compositeScore);
-    expect(scoredLowUsage.scoreBreakdown.fairnessScore).toBe(25);
-    expect(scoredHighUsage.scoreBreakdown.fairnessScore).toBe(5);
+    const tieResult = resolveAllocationConflict([tieX, tieY]);
+    expect(tieResult.winner.compositeScore).toBe(78);
+    // tieY has fewer deadline days remaining (2 vs 4), so tieY wins the tie-break
+    expect(tieResult.winner.id).toBe("TY");
   });
 
   it("should generate a reasoned explanation and slot details", () => {
     const result = resolveAllocationConflict(sampleConflictingRequests);
 
     expect(result.explanation).toContain("Aarav Sharma");
-    expect(result.explanation).toContain("composite score");
+    expect(result.explanation).toContain("composite score of 96/100");
     expect(result.allocatedSlot).toContain("2026-11-24");
     expect(result.allocatedSlot).toContain("10:00 AM - 01:00 PM");
   });
@@ -71,16 +117,20 @@ describe("AI Conflict Resolver (resolveAllocationConflict)", () => {
 
     const nullResult = resolveAllocationConflict(null);
     expect(nullResult.winner).toBeNull();
+
+    const undefinedResult = resolveAllocationConflict(undefined);
+    expect(undefinedResult.winner).toBeNull();
   });
 });
 
 describe("Security Sanitization (sanitizeInput)", () => {
-  it("should strip angle brackets to prevent XSS", () => {
-    const malicious = "<script>alert('pwned')</script>";
+  it("should strip angle brackets and null bytes to prevent XSS", () => {
+    const malicious = "<script>alert('pwned')\0</script>";
     const sanitized = sanitizeInput(malicious);
     expect(sanitized).toBe("scriptalert('pwned')/script");
     expect(sanitized).not.toContain("<");
     expect(sanitized).not.toContain(">");
+    expect(sanitized).not.toContain("\0");
   });
 
   it("should trim surrounding whitespace", () => {
@@ -94,10 +144,11 @@ describe("Security Sanitization (sanitizeInput)", () => {
     expect(sanitized.length).toBe(50);
   });
 
-  it("should handle null, undefined, and non-string values safely", () => {
+  it("should handle null, undefined, numbers, and booleans safely", () => {
     expect(sanitizeInput(null)).toBe("");
     expect(sanitizeInput(undefined)).toBe("");
     expect(sanitizeInput(12345)).toBe("12345");
+    expect(sanitizeInput(true)).toBe("true");
   });
 });
 
@@ -112,8 +163,9 @@ describe("Booking Payload Validation (validateBookingPayload)", () => {
     const payload = {
       studentName: "Aarav Sharma",
       usn: "1MS21CS004",
-      projectTitle: "Low-Latency Autonomous Drone Obstacle Avoidance",
-      deadline: getFutureDateStr()
+      projectTitle: "Edge TensorRT Autonomous Obstacle Avoidance",
+      deadline: getFutureDateStr(),
+      urgencyLevel: "Critical"
     };
 
     const result = validateBookingPayload(payload);
@@ -171,6 +223,20 @@ describe("Booking Payload Validation (validateBookingPayload)", () => {
     const result = validateBookingPayload(payload);
     expect(result.isValid).toBe(false);
     expect(result.errors.deadline).toBe("Project deadline cannot be in the past.");
+  });
+
+  it("should reject invalid urgency levels if provided", () => {
+    const payload = {
+      studentName: "Rohan Kulkarni",
+      usn: "1MS22AI032",
+      projectTitle: "Quadruped Robot Navigation",
+      deadline: getFutureDateStr(),
+      urgencyLevel: "SuperUrgent"
+    };
+
+    const result = validateBookingPayload(payload);
+    expect(result.isValid).toBe(false);
+    expect(result.errors.urgencyLevel).toBeDefined();
   });
 
   it("should handle null or invalid payload objects", () => {

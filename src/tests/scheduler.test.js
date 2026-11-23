@@ -7,38 +7,40 @@ import {
 import { sanitizeInput, validateBookingPayload } from "../utils/security";
 import { sampleConflictingRequests } from "../data/labData";
 
-describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
-  // Test 1: Prioritizing closer project deadlines
-  it("1. should prioritize requests with closer project deadlines", () => {
-    const urgentDeadline = scoreRequest({
-      studentName: "Student Urgent",
+describe("LabLink Production AI Scheduler, Security & Verification Suite", () => {
+  // Test 1: Deadline priority scoring
+  it("1. should prioritize closer project deadlines with higher proximity score", () => {
+    const imminentReq = scoreRequest({
+      studentName: "Student A",
       deadlineDaysRemaining: 2,
       urgencyLevel: "High",
       priorMonthlyBookings: 1
     });
-    const distantDeadline = scoreRequest({
-      studentName: "Student Distant",
-      deadlineDaysRemaining: 12,
+    const distantReq = scoreRequest({
+      studentName: "Student B",
+      deadlineDaysRemaining: 18,
       urgencyLevel: "High",
       priorMonthlyBookings: 1
     });
 
-    expect(urgentDeadline.scoreBreakdown.deadlineScore).toBe(50);
-    expect(distantDeadline.scoreBreakdown.deadlineScore).toBe(18);
-    expect(urgentDeadline.compositeScore).toBeGreaterThan(distantDeadline.compositeScore);
+    expect(imminentReq.scoreBreakdown.deadlineScore).toBe(50);
+    expect(distantReq.scoreBreakdown.deadlineScore).toBe(10);
+    expect(imminentReq.compositeScore).toBeGreaterThan(distantReq.compositeScore);
   });
 
-  // Test 2: Urgency tier weighting (Critical vs Normal)
-  it("2. should weight project urgency tiers correctly (Critical: 30pts vs Normal: 10pts)", () => {
+  // Test 2: Urgency severity weighting
+  it("2. should weight project urgency severity accurately (Critical: 30pts vs Normal: 10pts)", () => {
     const criticalReq = scoreRequest({ urgencyLevel: "Critical" });
+    const highReq = scoreRequest({ urgencyLevel: "High" });
     const normalReq = scoreRequest({ urgencyLevel: "Normal" });
 
     expect(criticalReq.scoreBreakdown.urgencyScore).toBe(30);
+    expect(highReq.scoreBreakdown.urgencyScore).toBe(20);
     expect(normalReq.scoreBreakdown.urgencyScore).toBe(10);
   });
 
-  // Test 3: Equity penalty for repeat bookings
-  it("3. should penalize frequent prior bookings to foster usage equity and prevent resource hoarding", () => {
+  // Test 3: Usage equity penalty
+  it("3. should penalize heavy repeat monthly bookings to foster usage equity", () => {
     const firstTimeUser = scoreRequest({ priorMonthlyBookings: 0 });
     const repeatUser = scoreRequest({ priorMonthlyBookings: 5 });
 
@@ -47,26 +49,26 @@ describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
     expect(firstTimeUser.compositeScore).toBeGreaterThan(repeatUser.compositeScore);
   });
 
-  // Test 4: Alternative slot recommendation for deferred requests
-  it("4. should suggest an alternative slot and workstation backup for deferred requests", () => {
-    const conflictResult = resolveAllocationConflict(sampleConflictingRequests);
+  // Test 4: Alternative slot recommendation generation
+  it("4. should generate guaranteed alternative slot recommendations and workstation backups for deferred students", () => {
+    const result = resolveAllocationConflict(sampleConflictingRequests);
 
-    expect(conflictResult.suggestedAlternative).toBeDefined();
-    expect(conflictResult.suggestedAlternative.student).toContain("Priyanka Nair");
-    expect(conflictResult.suggestedAlternative.suggestedDate).toBeDefined();
-    expect(conflictResult.suggestedAlternative.suggestedSlot).toContain("02:00 PM - 05:00 PM");
-    expect(conflictResult.suggestedAlternative.workstationBackup).toContain("Lab 501");
+    expect(result.suggestedAlternative).toBeDefined();
+    expect(result.suggestedAlternative.student).toContain("Priyanka Nair");
+    expect(result.suggestedAlternative.suggestedDate).toBeDefined();
+    expect(result.suggestedAlternative.suggestedSlot).toContain("02:00 PM - 05:00 PM");
+    expect(result.suggestedAlternative.workstationBackup).toContain("High-Performance Workstation Node 2");
+    expect(result.deferredRequests.length).toBeGreaterThanOrEqual(1);
   });
 
-  // Test 5: Complete Explainable AI (XAI) score breakdown calculation
-  it("5. should output a complete Explainable AI (XAI) score breakdown formula", () => {
+  // Test 5: Complete composite score calculation
+  it("5. should calculate complete composite score out of 100 with explainable math breakdown", () => {
     const scored = scoreRequest({
-      deadlineDaysRemaining: 2,
-      urgencyLevel: "Critical",
-      priorMonthlyBookings: 1
+      deadlineDaysRemaining: 2, // 50 pts
+      urgencyLevel: "Critical",  // 30 pts
+      priorMonthlyBookings: 1    // 16 pts
     });
 
-    // 50 (deadline) + 30 (urgency) + 16 (equity) = 96
     expect(scored.compositeScore).toBe(96);
     expect(scored.scoreBreakdown).toEqual({
       deadlineScore: 50,
@@ -78,14 +80,14 @@ describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
     );
   });
 
-  // Test 6: Digital lab pass token generation and bench allocation
-  it("6. should generate an authorized digital lab gate pass with bench allocation and verification hash", () => {
+  // Test 6: Digital gate pass token generation
+  it("6. should generate an authorized digital lab entry pass with unique Token ID, timestamp, and bench assignment", () => {
     const request = {
       id: "REQ-2026-001",
       studentName: "Aarav Sharma",
       usn: "1MS21CS004",
-      department: "Computer Science & ISE",
-      equipmentName: "NVIDIA Jetson AGX Orin DevKit",
+      department: "CSE / ISE",
+      equipmentName: "NVIDIA Jetson Edge-AI Dev Kit",
       guideName: "Dr. Sudhir Rao",
       slotDate: "2026-11-24",
       timeSlot: "10:00 AM - 01:00 PM"
@@ -95,16 +97,20 @@ describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
 
     expect(pass).toBeDefined();
     expect(pass.passId).toMatch(/^PASS-2026-JETSON-\d+/);
+    expect(pass.tokenId).toBe(pass.passId);
     expect(pass.benchNumber).toBe("Bench-04A");
-    expect(pass.status).toBe("AUTHORIZED_ACTIVE");
-    expect(pass.verificationHash).toMatch(/^0x[a-f0-9]+/);
     expect(pass.studentName).toBe("Aarav Sharma");
+    expect(pass.usn).toBe("1MS21CS004");
+    expect(pass.facultySponsor).toBe("Dr. Sudhir Rao");
+    expect(pass.timestamp).toBeDefined();
+    expect(pass.verificationHash).toMatch(/^0x[a-f0-9]+/);
+    expect(pass.status).toBe("AUTHORIZED_ACTIVE");
   });
 
-  // Test 7: Input sanitization against <script> XSS vectors
-  it("7. should neutralize <script> XSS injection vectors from user inputs", () => {
-    const maliciousInput = "<script>alert('pwned')</script>";
-    const sanitized = sanitizeInput(maliciousInput);
+  // Test 7: XSS sanitization of script tags
+  it("7. should neutralize <script> XSS injection vectors from user input strings", () => {
+    const xssPayload = "<script>alert('pwned')</script>";
+    const sanitized = sanitizeInput(xssPayload);
 
     expect(sanitized).toBe("scriptalert('pwned')/script");
     expect(sanitized).not.toContain("<script>");
@@ -112,55 +118,66 @@ describe("LabLink Core AI Scheduling, Security & Verification Suite", () => {
     expect(sanitized).not.toContain(">");
   });
 
-  // Test 8: Input sanitization against HTML tag injection
-  it("8. should strip HTML tags and bound excessive character length", () => {
-    const htmlPayload = "<h1>Autonomous Navigation</h1><img src=x onerror=alert(1)>";
-    const sanitized = sanitizeInput(htmlPayload, 25);
+  // Test 8: HTML tag stripping
+  it("8. should strip HTML tags and bound excessive character lengths", () => {
+    const htmlPayload = "<h1>Edge AI Prototyping</h1><img src=x onerror=alert(1)>";
+    const sanitized = sanitizeInput(htmlPayload, 20);
 
     expect(sanitized).not.toContain("<");
     expect(sanitized).not.toContain(">");
-    expect(sanitized.length).toBeLessThanOrEqual(25);
+    expect(sanitized.length).toBeLessThanOrEqual(20);
   });
 
-  // Test 9: Form payload rejection for missing USN/student name
-  it("9. should reject booking payloads missing student name or USN", () => {
-    const missingNamePayload = {
-      studentName: "",
-      usn: "1MS21CS004",
-      projectTitle: "Robotics Sensor Fusion",
-      deadline: "2026-12-01"
-    };
-    const missingUsnPayload = {
-      studentName: "Aarav Sharma",
-      usn: "",
-      projectTitle: "Robotics Sensor Fusion",
-      deadline: "2026-12-01"
-    };
+  // Test 9: Form payload rejection on missing required fields
+  it("9. should reject booking payloads on missing required fields or invalid USN formats", () => {
+    const invalidPayloads = [
+      {
+        studentName: "",
+        usn: "1MS21CS004",
+        projectTitle: "Autonomous UAV",
+        deadline: "2026-12-01"
+      },
+      {
+        studentName: "Aarav Sharma",
+        usn: "1M", // too short, min 5 chars required
+        projectTitle: "Autonomous UAV",
+        deadline: "2026-12-01"
+      },
+      {
+        studentName: "Aarav Sharma",
+        usn: "1MS21CS004",
+        projectTitle: "", // missing title
+        deadline: "2026-12-01"
+      },
+      {
+        studentName: "Aarav Sharma",
+        usn: "1MS21CS004",
+        projectTitle: "Autonomous UAV",
+        deadline: "2020-01-01" // past deadline
+      }
+    ];
 
-    const validation1 = validateBookingPayload(missingNamePayload);
-    const validation2 = validateBookingPayload(missingUsnPayload);
-
-    expect(validation1.isValid).toBe(false);
-    expect(validation1.errors.studentName).toBeDefined();
-
-    expect(validation2.isValid).toBe(false);
-    expect(validation2.errors.usn).toBeDefined();
+    invalidPayloads.forEach((payload) => {
+      const result = validateBookingPayload(payload);
+      expect(result.isValid).toBe(false);
+      expect(Object.keys(result.errors).length).toBeGreaterThan(0);
+    });
   });
 
-  // Test 10: Form payload acceptance for valid project submissions
-  it("10. should accept and validate legitimate project booking submissions", () => {
+  // Test 10: Form payload acceptance on valid submission
+  it("10. should accept and validate compliant project booking submissions", () => {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 10);
 
-    const validPayload = {
+    const validSubmission = {
       studentName: "Aarav Sharma",
       usn: "1MS21CS004",
-      projectTitle: "Edge TensorRT UAV Obstacle Avoidance",
+      projectTitle: "Autonomous Search & Rescue Drone Navigation",
       deadline: futureDate.toISOString().split("T")[0],
       urgencyLevel: "Critical"
     };
 
-    const result = validateBookingPayload(validPayload);
+    const result = validateBookingPayload(validSubmission);
 
     expect(result.isValid).toBe(true);
     expect(Object.keys(result.errors).length).toBe(0);

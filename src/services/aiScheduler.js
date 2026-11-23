@@ -155,7 +155,7 @@ export function resolveAllocationConflict(competingRequests) {
     student: `${firstDeferred.studentName} (${firstDeferred.usn || firstDeferred.department})`,
     suggestedDate: formattedNextDate,
     suggestedSlot: "02:00 PM - 05:00 PM (Next Priority Window)",
-    workstationBackup: "High-Performance Workstation Node 2 (Lab 501 - Pre-configured Container & Remote Access)",
+    workstationBackup: "High-Performance Workstation Node 2 (Cloud & High-Performance Lab - Pre-configured Container)",
     reasoning: `Assigned priority queue placement on ${formattedNextDate} to preserve project velocity while accommodating the immediate deadline of ${winner.studentName}.`
   };
 
@@ -166,7 +166,7 @@ export function resolveAllocationConflict(competingRequests) {
       ...item,
       suggestedAlternativeDate: shiftDate.toISOString().split("T")[0],
       suggestedAlternativeSlot: "02:00 PM - 05:00 PM",
-      workstationBackup: `Lab 501 High-Performance Cloud Node ${index + 1} (Pre-configured Slurm Container)`
+      workstationBackup: `Cloud Workstation Cluster Node ${index + 1} (Pre-configured JetPack Container)`
     };
   });
 
@@ -176,7 +176,7 @@ export function resolveAllocationConflict(competingRequests) {
     `(Urgency: ${winner.urgencyLevel}, awarded 50pts deadline + 30pts urgency), balanced against usage equity ` +
     `(${winner.scoreBreakdown.fairnessScore}pts equity). Math breakdown: [${winner.xaiFormula}]. ` +
     `${firstDeferred.studentName} (${firstDeferred.compositeScore}/100) has been ` +
-    `provisioned an automated priority alternative on ${formattedNextDate} (02:00 PM - 05:00 PM) with secondary workstation backup: High-Performance Workstation Node 2 (Lab 501).`;
+    `provisioned a guaranteed alternative reservation on ${formattedNextDate} (02:00 PM - 05:00 PM) with secondary backup workstation: High-Performance Workstation Node 2.`;
 
   return {
     winner,
@@ -212,7 +212,7 @@ export function generateDigitalLabPass(request, benchNumber = "Bench-04A") {
     sanitizedTag = "RTXGPU";
   } else if (/oscilloscope|dso/i.test(rawEquipment)) {
     sanitizedTag = "OSCILL";
-  } else if (/pcr/i.test(rawEquipment)) {
+  } else if (/pcr|eppendorf/i.test(rawEquipment)) {
     sanitizedTag = "PCRBIO";
   } else {
     sanitizedTag = rawEquipment.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase() || "LABKIT";
@@ -235,6 +235,7 @@ export function generateDigitalLabPass(request, benchNumber = "Bench-04A") {
 
   return {
     passId,
+    tokenId: passId, // alias for token ID
     studentName: request.studentName || "Authorized Student",
     usn: request.usn || "1MS21CS001",
     department: request.department || "Engineering",
@@ -244,6 +245,7 @@ export function generateDigitalLabPass(request, benchNumber = "Bench-04A") {
     benchNumber: assignedBench,
     slotDate: request.slotDate || timestamp.split("T")[0],
     timeSlot: request.timeSlot || "10:00 AM - 01:00 PM",
+    timestamp,
     safetyClearanceTimestamp: timestamp,
     verificationHash,
     status: "AUTHORIZED_ACTIVE"

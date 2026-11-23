@@ -26,6 +26,8 @@ export function sanitizeInput(str, maxLength = 200) {
 
 /**
  * Validates laboratory slot booking submissions against schema constraints.
+ * Enforces student name (min 2 chars), USN format (alphanumeric 5-15 chars),
+ * project title (min 3 chars), and mandatory deadline date.
  *
  * @param {Object} data - Form submission payload
  * @returns {{ isValid: boolean, errors: Object<string, string> }}
@@ -40,7 +42,7 @@ export function validateBookingPayload(data) {
     };
   }
 
-  // 1. Student Name
+  // 1. Student Name (min 2 chars, max 100)
   const name = typeof data.studentName === "string" ? data.studentName.trim() : "";
   if (!name) {
     errors.studentName = "Student name is required.";
@@ -52,15 +54,15 @@ export function validateBookingPayload(data) {
     errors.studentName = "Student name contains invalid characters.";
   }
 
-  // 2. College USN / Student ID
+  // 2. College USN / Student ID (alphanumeric 5-15 chars)
   const usn = typeof data.usn === "string" ? data.usn.trim() : "";
   if (!usn) {
     errors.usn = "College USN / Student ID is required.";
-  } else if (!/^[A-Za-z0-9/-]{3,25}$/.test(usn)) {
-    errors.usn = "Enter a valid USN / Student ID (3-25 alphanumeric characters).";
+  } else if (!/^[A-Za-z0-9/-]{5,15}$/.test(usn)) {
+    errors.usn = "Enter a valid USN / Student ID (5-15 alphanumeric characters).";
   }
 
-  // 3. Project Title
+  // 3. Project Title (min 3 chars, max 150)
   const title = typeof data.projectTitle === "string" ? data.projectTitle.trim() : "";
   if (!title) {
     errors.projectTitle = "Project title is required.";
@@ -70,7 +72,7 @@ export function validateBookingPayload(data) {
     errors.projectTitle = "Project title cannot exceed 150 characters.";
   }
 
-  // 4. Project Deadline Date
+  // 4. Project Deadline Date (mandatory date check)
   const deadlineStr = typeof data.deadline === "string" ? data.deadline.trim() : "";
   if (!deadlineStr) {
     errors.deadline = "Project deadline date is required.";

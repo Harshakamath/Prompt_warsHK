@@ -45,7 +45,7 @@ export default function App() {
   const [formData, setFormData] = useState({
     studentName: "",
     usn: "",
-    department: "Computer Science & ISE",
+    department: "CSE / ISE",
     projectTitle: "",
     projectScope: "",
     deadline: "",
@@ -64,8 +64,7 @@ export default function App() {
   // Faculty Approval Statuses & Digital Lab Pass Modal
   const [facultyStatuses, setFacultyStatuses] = useState({
     "REQ-2026-001": "Pending",
-    "REQ-2026-002": "Pending",
-    "REQ-2026-003": "Pending"
+    "REQ-2026-002": "Pending"
   });
   const [activeDigitalPass, setActiveDigitalPass] = useState(null);
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
@@ -73,12 +72,12 @@ export default function App() {
 
   const departments = [
     "All",
-    "AI & Robotics",
+    "Robotics & AI",
     "ECE / VLSI",
-    "Mechanical / Prototyping",
+    "Mechanical",
     "VLSI & Embedded",
-    "Biotechnology",
-    "Computer Science & ISE"
+    "CSE / ISE",
+    "Biotechnology"
   ];
 
   // Close modals on Escape key press
@@ -157,7 +156,7 @@ export default function App() {
       setFormData({
         studentName: "",
         usn: "",
-        department: "Computer Science & ISE",
+        department: "CSE / ISE",
         projectTitle: "",
         projectScope: "",
         deadline: "",
@@ -208,9 +207,9 @@ export default function App() {
 
       {/* Main Accessible Header */}
       <header className="border-b border-slate-800 bg-[#0c1222]/95 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
               <Cpu className="w-6 h-6 text-white" aria-hidden="true" />
             </div>
             <div>
@@ -228,11 +227,11 @@ export default function App() {
             </div>
           </div>
 
-          <nav className="flex space-x-1 sm:space-x-2" aria-label="Main Application Navigation">
+          <nav className="flex flex-wrap gap-1.5" aria-label="Main Application Navigation">
             <button
               type="button"
               onClick={() => setActiveTab("catalog")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                 activeTab === "catalog"
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/80"
@@ -243,7 +242,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setActiveTab("conflict-resolver")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                 activeTab === "conflict-resolver"
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/80"
@@ -255,7 +254,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setActiveTab("faculty-portal")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                 activeTab === "faculty-portal"
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/80"
@@ -266,7 +265,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setActiveTab("utilization")}
-              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                 activeTab === "utilization"
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                   : "text-slate-300 hover:text-white hover:bg-slate-800/80"
@@ -287,23 +286,23 @@ export default function App() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 id="catalog-heading" className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Cross-Department Laboratory Resource Discovery
+                  University Laboratory Research & Resource Grid
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Discover specialized hardware kits, FPGA accelerators, and laboratory workstations across departments.
+                  Discover specialized engineering kits, development boards, and laboratory workstations across departments.
                 </p>
               </div>
-              <div className="flex items-center gap-4 bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-xl text-xs shrink-0">
+              <div className="flex flex-wrap items-center gap-3 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-xs shrink-0">
                 <div>
                   <span className="block text-slate-400 text-[11px]">Active Shared Nodes</span>
-                  <span className="font-semibold text-white text-sm">{campusMetrics.activeSharedNodes} Nodes</span>
+                  <span className="font-semibold text-white text-sm">{campusMetrics.activeSharedNodes} Systems</span>
                 </div>
-                <div className="h-7 w-px bg-slate-800" />
+                <div className="h-6 w-px bg-slate-800" />
                 <div>
                   <span className="block text-slate-400 text-[11px]">Reclaimed Idle Hours</span>
                   <span className="font-semibold text-cyan-400 text-sm">{campusMetrics.reclaimedIdleHours} hrs</span>
                 </div>
-                <div className="h-7 w-px bg-slate-800" />
+                <div className="h-6 w-px bg-slate-800" />
                 <div>
                   <span className="block text-slate-400 text-[11px]">Campus Utilization</span>
                   <span className="font-semibold text-emerald-400 text-sm">{campusMetrics.overallUtilization}%</span>
@@ -311,9 +310,9 @@ export default function App() {
               </div>
             </div>
 
-            {/* Search and Department Filter Controls */}
+            {/* Search and Department Filter Controls (Clean Flex-Wrap, No Awkward Horizontal Scrollbars) */}
             <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
-              <div className="relative w-full md:w-96">
+              <div className="relative w-full md:w-80 shrink-0">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                 <input
                   type="text"
@@ -325,14 +324,14 @@ export default function App() {
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0" role="toolbar" aria-label="Department filters">
+              <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto" role="toolbar" aria-label="Department filters">
                 <SlidersHorizontal className="w-4 h-4 text-slate-400 shrink-0 mr-1" aria-hidden="true" />
                 {departments.map((dept) => (
                   <button
                     key={dept}
                     type="button"
                     onClick={() => setSelectedDept(dept)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                       selectedDept === dept
                         ? "bg-indigo-600 text-white font-semibold shadow"
                         : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -384,7 +383,7 @@ export default function App() {
                         >
                           {item.availableUnits > 0
                             ? `${item.availableUnits} of ${item.totalUnits} Available`
-                            : "Fully Allocated"}
+                            : "Booked (In Use)"}
                         </span>
                       </div>
 
@@ -399,7 +398,7 @@ export default function App() {
                       <div className="space-y-2.5 text-xs text-slate-300 mb-5 bg-[#0a0f1d] p-3 rounded-xl border border-slate-800/80">
                         <div>
                           <strong className="text-slate-400 block mb-0.5 text-[11px] uppercase tracking-wide">
-                            Specifications:
+                            Key Specifications:
                           </strong>
                           <span className="text-slate-200">{item.specs}</span>
                         </div>
@@ -411,7 +410,7 @@ export default function App() {
                         </div>
                         <div className="pt-2 border-t border-slate-800/60 space-y-1">
                           <div className="flex items-center justify-between text-[11px] text-slate-400">
-                            <span>Workstation Duty Cycle:</span>
+                            <span>Duty Utilization:</span>
                             <span className="font-semibold text-emerald-400">{item.dutyCycle || `${item.hourlyUtilization}%`}</span>
                           </div>
                           <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -439,7 +438,7 @@ export default function App() {
           </section>
         )}
 
-        {/* Tab 2: GenAI Conflict Resolver with XAI Breakdown */}
+        {/* Tab 2: AI Conflict Resolver with XAI Breakdown */}
         {activeTab === "conflict-resolver" && (
           <section aria-labelledby="resolver-heading" className="space-y-6">
             <div className="bg-[#0f172a] border border-indigo-800/60 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -453,16 +452,16 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-                  Multi-criteria optimization engine balancing <strong className="text-slate-200">Deadline Proximity (50pts)</strong>,{" "}
+                  Intelligent arbitration resolving overlapping slot requests by balancing <strong className="text-slate-200">Deadline Proximity (50pts)</strong>,{" "}
                   <strong className="text-slate-200">Urgency Severity (30pts)</strong>, and{" "}
-                  <strong className="text-slate-200">Resource Usage Equity (20pts)</strong> to resolve overlapping slot requests fairly.
+                  <strong className="text-slate-200">Resource Usage Equity (20pts)</strong>.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setShowXaiModal(true)}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm rounded-xl transition flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs sm:text-sm rounded-xl transition flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
                   <FileText className="w-4 h-4 text-cyan-300" aria-hidden="true" />
                   <span>XAI Model Specs</span>
@@ -471,7 +470,7 @@ export default function App() {
                   type="button"
                   onClick={handleRunAiSolver}
                   disabled={isSolving}
-                  className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-indigo-600/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 >
                   <Sparkles className="w-4 h-4 text-amber-300" aria-hidden="true" />
                   <span>{isSolving ? "Evaluating Conflicts..." : "Run AI Conflict Solver"}</span>
@@ -484,10 +483,10 @@ export default function App() {
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                   <AlertCircle className="w-5 h-5 text-amber-400" aria-hidden="true" />
-                  <span>Conflicting Slot Competition: NVIDIA Jetson AGX Orin DevKit</span>
+                  <span>Contested Hardware: NVIDIA Jetson Edge-AI Dev Kit</span>
                 </h2>
                 <span className="text-xs text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2.5 py-1 rounded-full font-medium">
-                  3 Competing Requests • 1 Shared Primary Slot (10:00 AM - 01:00 PM)
+                  2 Competing Requests for Slot: 10:00 AM - 01:00 PM
                 </span>
               </div>
 
@@ -584,7 +583,7 @@ export default function App() {
                   {aiReport.suggestedAlternative && (
                     <div className="bg-[#070b14] border border-cyan-800/60 p-4 rounded-xl space-y-2">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 block">
-                        Alternative Slot & Workstation Backup
+                        Guaranteed Alternative Slot & Workstation Backup
                       </span>
                       <p className="text-base font-bold text-white">
                         {aiReport.suggestedAlternative.student}
@@ -622,7 +621,7 @@ export default function App() {
                   Faculty Approval Queue & Lab Pass Issuance
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Authorize student reservations, assign laboratory benches, and issue cryptographically verifiable Digital Lab Gate Passes.
+                  Authorize student research reservations, assign lab benches, and issue cryptographically verifiable Digital Lab Entry Passes.
                 </p>
               </div>
               <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-400">
@@ -714,7 +713,7 @@ export default function App() {
                   Campus Laboratory Resource Utilization Dashboard
                 </h1>
                 <p className="text-sm text-slate-400 mt-1">
-                  Cross-departmental sharing analytics, CapEx savings, idle workstation reclamation, and hourly bottleneck distribution.
+                  Cross-departmental sharing analytics, CapEx savings, idle workstation reclamation, and hourly load bottlenecks.
                 </p>
               </div>
               <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-700/50 px-3 py-1.5 rounded-lg text-xs text-emerald-300">
@@ -802,7 +801,7 @@ export default function App() {
               <div className="bg-[#0f172a] border border-slate-800 rounded-2xl p-6">
                 <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-                  <span>Peak vs. Off-Peak Hourly Occupancy Distribution</span>
+                  <span>Peak vs. Off-Peak Hourly Occupancy Distribution (09:00 - 18:00)</span>
                 </h2>
                 <div className="space-y-2.5">
                   {campusMetrics.hourlyLoadDistribution.map((slot) => (
@@ -854,7 +853,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Digital Lab Gate Pass Modal */}
+      {/* Digital Lab Entry Pass Modal */}
       {isPassModalOpen && activeDigitalPass && (
         <div
           role="dialog"
@@ -878,7 +877,7 @@ export default function App() {
               </div>
               <div>
                 <h2 id="pass-modal-title" className="text-lg font-bold text-white">
-                  Authorized Digital Lab Pass
+                  Digital Lab Entry Pass
                 </h2>
                 <span className="text-[10px] uppercase font-mono text-emerald-400">
                   Status: {activeDigitalPass.status}
@@ -1139,7 +1138,7 @@ export default function App() {
                     aria-invalid={!!formErrors.projectTitle}
                     aria-describedby={formErrors.projectTitle ? "projectTitle-error" : undefined}
                     className="w-full bg-[#070b14] border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Edge TensorRT UAV Obstacle Avoidance"
+                    placeholder="e.g. Autonomous Search & Rescue Drone Navigation"
                   />
                   {formErrors.projectTitle && (
                     <span id="projectTitle-error" className="text-rose-400 mt-1 block">

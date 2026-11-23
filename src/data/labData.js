@@ -10,137 +10,110 @@
 export const initialEquipment = [
   {
     id: "EQ-AI-01",
-    name: "NVIDIA Jetson AGX Orin 64GB Developer Kit",
+    name: "NVIDIA Jetson Edge-AI Dev Kit",
     category: "Edge AI & Autonomous Systems",
-    department: "AI & Robotics",
-    labRoom: "Room 304, Autonomous Systems Lab",
+    department: "Robotics & AI",
+    labRoom: "Room 304 - Autonomous Systems Lab",
     leadFaculty: "Dr. Ananya Sen",
-    specs: "64GB 256-bit LPDDR5, 275 TOPS INT8 AI compute, TensorRT 8.6, Dual GbE, Ampere GPU",
-    prerequisites: "Python 3.10, PyTorch/TensorRT basics, Lab Safety Induction Level 1",
+    specs: "NVIDIA Ampere GPU, 64GB Unified RAM, 275 TOPS AI compute for real-time vision & autonomous navigation",
+    prerequisites: "Python & CUDA basics, Lab Safety Induction Level 1",
     totalUnits: 3,
     availableUnits: 1,
     dutyCycle: "94%",
     hourlyUtilization: 94
   },
   {
-    id: "EQ-VLSI-02",
-    name: "Xilinx Zynq UltraScale+ ZCU102 MPSoC",
-    category: "Embedded & FPGA Acceleration",
-    department: "ECE / VLSI",
-    labRoom: "Room 202, Embedded Systems Center",
-    leadFaculty: "Prof. K. Venkatesh",
-    specs: "Quad ARM Cortex-A53, Dual Cortex-R5F, 500k+ System Logic Cells, DDR4 SODIMM",
-    prerequisites: "Verilog/VHDL, Vivado 2023.2 tooling, FPGA Architecture I",
-    totalUnits: 4,
-    availableUnits: 2,
-    dutyCycle: "82%",
-    hourlyUtilization: 82
-  },
-  {
-    id: "EQ-MECH-03",
-    name: "Formlabs Form 4BL Medical & Engineering SLA 3D Printer",
-    category: "Additive Manufacturing & Prototyping",
-    department: "Mechanical / Prototyping",
-    labRoom: "Room 101, Additive Prototyping Facility",
-    leadFaculty: "Dr. B. R. Patil",
-    specs: "Stereolithography (SLA), 335 x 200 x 300 mm build volume, Tough 2000 & BioMed resins, 25µm resolution",
-    prerequisites: "CAD modeling (SolidWorks / Fusion 360), PreForm SLA slicer clearance",
-    totalUnits: 2,
-    availableUnits: 0,
-    dutyCycle: "98%",
-    hourlyUtilization: 98
-  },
-  {
-    id: "EQ-RF-04",
-    name: "Keysight Infiniium MXR-Series 4-Channel DSO Oscilloscope",
+    id: "EQ-RF-02",
+    name: "Keysight DSO 4-Channel Mixed Signal Oscilloscope",
     category: "RF & High-Speed Signal Analysis",
     department: "ECE / VLSI",
-    labRoom: "Room 208, Microwave & RF Lab",
+    labRoom: "Room 204 - Signal Processing Lab",
     leadFaculty: "Dr. M. S. Suresh",
-    specs: "2.5 GHz Bandwidth, 16 GSa/s real-time sample rate, 16-channel digital logic MSO, 10-bit ADC",
-    prerequisites: "Signals & Systems, RF Lab Safety, Probe Calibration Guide",
+    specs: "2.5 GHz Bandwidth, 16-channel digital logic MSO, high-speed waveform capture & FFT analysis",
+    prerequisites: "Digital Circuit Theory, RF Probe Calibration Clearance",
     totalUnits: 2,
     availableUnits: 1,
     dutyCycle: "76%",
     hourlyUtilization: 76
   },
   {
-    id: "EQ-BIO-05",
-    name: "Bio-Rad CFX96 Deep Well Real-Time PCR Thermal Cycler",
-    category: "Molecular Diagnostics & Genomics",
-    department: "Biotechnology",
-    labRoom: "Room 402, Molecular Bio & Genomics Lab",
-    leadFaculty: "Dr. Kavita Hegde",
-    specs: "6-channel optical detection, 96-well deep plate format, thermal gradient 30-100°C",
-    prerequisites: "Biosafety Level 2 (BSL-2) certified, Pipetting Protocol clearance",
-    totalUnits: 1,
-    availableUnits: 1,
-    dutyCycle: "85%",
-    hourlyUtilization: 85
+    id: "EQ-MECH-03",
+    name: "Formlabs SLA 3D Prototyping Printer",
+    category: "Additive Manufacturing & Prototyping",
+    department: "Mechanical",
+    labRoom: "FabLab Workshop B",
+    leadFaculty: "Dr. B. R. Patil",
+    specs: "Precision Stereolithography (SLA), 25µm resolution, Tough & Engineering resin support",
+    prerequisites: "CAD clearance (Fusion 360 / SolidWorks), PreForm slicer training",
+    totalUnits: 2,
+    availableUnits: 0,
+    dutyCycle: "98%",
+    hourlyUtilization: 98
   },
   {
-    id: "EQ-CS-06",
-    name: "Dual NVIDIA RTX 4090 Deep Learning Node (128GB ECC RAM)",
+    id: "EQ-VLSI-04",
+    name: "Xilinx Zynq FPGA Development Kit",
+    category: "Embedded & FPGA Acceleration",
+    department: "VLSI & Embedded",
+    labRoom: "Room 310 - Digital Systems Lab",
+    leadFaculty: "Prof. K. Venkatesh",
+    specs: "Dual ARM Cortex-A9 core, 85K programmable logic cells, PCIe Gen2 & gigabit Ethernet interfaces",
+    prerequisites: "Verilog / VHDL fundamentals, Vivado design flow basics",
+    totalUnits: 4,
+    availableUnits: 2,
+    dutyCycle: "82%",
+    hourlyUtilization: 82
+  },
+  {
+    id: "EQ-CS-05",
+    name: "Dual RTX 4090 Deep Learning Workstation",
     category: "Deep Learning & Parallel Computing",
-    department: "Computer Science & ISE",
-    labRoom: "Room 501, High Performance Cloud Lab",
+    department: "CSE / ISE",
+    labRoom: "Cloud & High-Performance Lab",
     leadFaculty: "Dr. Sudhir Rao",
-    specs: "Dual 24GB RTX 4090 GPUs (48GB VRAM), AMD Threadripper 5965WX, 128GB DDR5 ECC, 4TB NVMe RAID",
-    prerequisites: "Linux CLI proficiency, Docker / Slurm cluster basics",
+    specs: "Dual 24GB RTX 4090 GPUs (48GB VRAM), 128GB DDR5 RAM, NVMe RAID scratch disk",
+    prerequisites: "Linux CLI proficiency, PyTorch / Docker container basics",
     totalUnits: 5,
     availableUnits: 3,
     dutyCycle: "96%",
     hourlyUtilization: 96
   },
   {
-    id: "EQ-ROB-07",
-    name: "Universal Robots UR5e 6-Axis Collaborative Robot Arm",
-    category: "Robotics & Cobot Automation",
-    department: "AI & Robotics",
-    labRoom: "Room 302, Robotics & Mechatronics Lab",
-    leadFaculty: "Prof. Arvind Shenoy",
-    specs: "6-axis articulated arm, 5kg payload, 850mm reach, 0.03mm repeatability, force-torque sensing",
-    prerequisites: "ROS 2 Humble, Cobot E-Stop Safety training, Kinematics & Control",
+    id: "EQ-BIO-06",
+    name: "Eppendorf Mastercycler PCR Workstation",
+    category: "Molecular Diagnostics & Genomics",
+    department: "Biotechnology",
+    labRoom: "Genomics Research Lab 105",
+    leadFaculty: "Dr. Kavita Hegde",
+    specs: "Gradient thermal cycler, 96-well format, optical reaction monitoring, vapo.protect lid",
+    prerequisites: "Biosafety Level 1 (BSL-1) induction, micropipetting protocol certified",
     totalUnits: 2,
-    availableUnits: 0,
-    dutyCycle: "91%",
-    hourlyUtilization: 91
-  },
-  {
-    id: "EQ-EDA-08",
-    name: "Cadence Virtuoso & Spectre RF IC Design Workstation",
-    category: "Microelectronic Design Automation",
-    department: "VLSI & Embedded",
-    labRoom: "Room 205, Advanced VLSI Clean Lab",
-    leadFaculty: "Dr. Preethi Joshi",
-    specs: "Spectre RF simulator, 28nm/16nm FinFET PDKs, Dual 4K color-calibrated displays, 64GB RAM",
-    prerequisites: "CMOS Analog Circuit Design, Virtuoso Schematic Editor clearance",
-    totalUnits: 3,
-    availableUnits: 2,
-    dutyCycle: "79%",
-    hourlyUtilization: 79
+    availableUnits: 1,
+    dutyCycle: "85%",
+    hourlyUtilization: 85
   }
 ];
 
 /**
- * Realistic overlapping slot requests demonstrating scheduling conflicts
- * across different student departments, deadlines, and urgency levels.
+ * Realistic conflicting requests clashing for the Jetson Dev Kit:
+ * - Student A: Capstone presentation in 2 days (Critical urgency)
+ * - Student B: Mini-project due in 18 days (Normal urgency)
  */
 export const sampleConflictingRequests = [
   {
     id: "REQ-2026-001",
     studentName: "Aarav Sharma",
     usn: "1MS21CS004",
-    department: "Computer Science & ISE",
-    projectTitle: "Edge TensorRT Autonomous Obstacle Avoidance for Search-and-Rescue UAVs",
-    projectScope: "Deploying quantized INT8 YOLOv11 & DeepSORT pipelines on Jetson Orin with sub-15ms latency constraints before National Drone Expo.",
+    department: "CSE / ISE",
+    projectTitle: "Autonomous Search & Rescue Drone Navigation",
+    projectScope: "Deploying quantized YOLOv11 & DeepSORT on Jetson Orin before Final Year Capstone presentation in 2 days.",
     deadlineDaysRemaining: 2,
     urgencyLevel: "Critical",
     priorMonthlyBookings: 1,
     priorAllocationsThisMonth: 1,
     guideName: "Dr. Sudhir Rao",
     equipmentId: "EQ-AI-01",
-    equipmentName: "NVIDIA Jetson AGX Orin 64GB Developer Kit",
+    equipmentName: "NVIDIA Jetson Edge-AI Dev Kit",
     slotDate: "2026-11-24",
     timeSlot: "10:00 AM - 01:00 PM"
   },
@@ -150,31 +123,14 @@ export const sampleConflictingRequests = [
     usn: "1MS21EC089",
     department: "ECE / VLSI",
     projectTitle: "FPGA-Accelerated Edge Telemetry Vision Engine",
-    projectScope: "Hardware profiling and thermal monitoring of live camera feed compression.",
-    deadlineDaysRemaining: 8,
-    urgencyLevel: "High",
+    projectScope: "Hardware profiling of live video compression for 5th semester mini-project due in 18 days.",
+    deadlineDaysRemaining: 18,
+    urgencyLevel: "Normal",
     priorMonthlyBookings: 5,
     priorAllocationsThisMonth: 5,
     guideName: "Prof. K. Venkatesh",
     equipmentId: "EQ-AI-01",
-    equipmentName: "NVIDIA Jetson AGX Orin 64GB Developer Kit",
-    slotDate: "2026-11-24",
-    timeSlot: "10:00 AM - 01:00 PM"
-  },
-  {
-    id: "REQ-2026-003",
-    studentName: "Rohan Kulkarni",
-    usn: "1MS22AI032",
-    department: "AI & Robotics",
-    projectTitle: "Quadruped Robot Dynamic Gaits via Multi-Modal Sensor Fusion",
-    projectScope: "Reinforcement learning policy evaluation for rough terrain locomotion.",
-    deadlineDaysRemaining: 14,
-    urgencyLevel: "Normal",
-    priorMonthlyBookings: 0,
-    priorAllocationsThisMonth: 0,
-    guideName: "Dr. Ananya Sen",
-    equipmentId: "EQ-AI-01",
-    equipmentName: "NVIDIA Jetson AGX Orin 64GB Developer Kit",
+    equipmentName: "NVIDIA Jetson Edge-AI Dev Kit",
     slotDate: "2026-11-24",
     timeSlot: "10:00 AM - 01:00 PM"
   }
@@ -189,38 +145,38 @@ export const campusMetrics = {
   crossDeptSharingIndex: "91.4%",
   overallUtilization: 88.4,
   idleReductionPercentage: "+34.2%",
-  activeSharedNodes: 24,
+  activeSharedNodes: 20,
   crossDeptCollaborations: 142,
   departmentSharingMatrix: [
     {
-      sourceDept: "Computer Science & ISE",
-      targetLab: "ECE Microwave & Signal Center",
+      sourceDept: "CSE / ISE",
+      targetLab: "ECE Signal Processing Lab",
       hoursShared: 42,
-      equipmentUsed: "Keysight Infiniium 4-Channel DSO"
+      equipmentUsed: "Keysight DSO 4-Channel Oscilloscope"
     },
     {
       sourceDept: "ECE / VLSI",
-      targetLab: "AI & Robotics Autonomous Center",
+      targetLab: "Robotics Autonomous Systems Lab",
       hoursShared: 38,
-      equipmentUsed: "NVIDIA Jetson AGX Orin DevKit"
+      equipmentUsed: "NVIDIA Jetson Edge-AI Dev Kit"
     },
     {
       sourceDept: "Biotechnology",
-      targetLab: "Mechanical Prototyping Facility",
+      targetLab: "FabLab Workshop B",
       hoursShared: 26,
-      equipmentUsed: "Formlabs Form 4BL SLA 3D Printer"
+      equipmentUsed: "Formlabs SLA 3D Prototyping Printer"
     },
     {
-      sourceDept: "Mechanical / Prototyping",
-      targetLab: "Robotics & Cobot Automation Lab",
+      sourceDept: "Mechanical",
+      targetLab: "Robotics Autonomous Systems Lab",
       hoursShared: 24,
-      equipmentUsed: "Universal Robots UR5e Cobot Arm"
+      equipmentUsed: "NVIDIA Jetson Edge-AI Dev Kit"
     },
     {
       sourceDept: "VLSI & Embedded",
-      targetLab: "HPC Cloud & Deep Learning Wing",
+      targetLab: "Cloud & High-Performance Lab",
       hoursShared: 18,
-      equipmentUsed: "Dual RTX 4090 Workstation Node"
+      equipmentUsed: "Dual RTX 4090 Deep Learning Workstation"
     }
   ],
   hourlyLoadDistribution: [
@@ -236,17 +192,17 @@ export const campusMetrics = {
     { hour: "18:00", occupancy: 42, status: "Off-Peak" }
   ],
   departmentBreakdown: [
-    { department: "AI & Robotics", utilization: 92, activeNodes: 5, sharedProjects: 46 },
-    { department: "ECE / VLSI", utilization: 86, activeNodes: 6, sharedProjects: 38 },
-    { department: "Mechanical / Prototyping", utilization: 79, activeNodes: 3, sharedProjects: 22 },
-    { department: "Computer Science & ISE", utilization: 95, activeNodes: 5, sharedProjects: 64 },
-    { department: "Biotechnology", utilization: 82, activeNodes: 3, sharedProjects: 18 },
-    { department: "VLSI & Embedded", utilization: 89, activeNodes: 2, sharedProjects: 29 }
+    { department: "Robotics & AI", utilization: 94, activeNodes: 3, sharedProjects: 46 },
+    { department: "ECE / VLSI", utilization: 76, activeNodes: 2, sharedProjects: 38 },
+    { department: "Mechanical", utilization: 98, activeNodes: 2, sharedProjects: 22 },
+    { department: "VLSI & Embedded", utilization: 82, activeNodes: 4, sharedProjects: 29 },
+    { department: "CSE / ISE", utilization: 96, activeNodes: 5, sharedProjects: 64 },
+    { department: "Biotechnology", utilization: 85, activeNodes: 2, sharedProjects: 18 }
   ],
   aiOptimizationTips: [
-    "Shifting non-critical coursework requests from 10:00 AM - 01:00 PM to 05:00 PM - 08:00 PM unlocks 28 additional weekly hours.",
-    "Prototyping SLA 3D print overnight batches frees peak daylight hours for live calibration.",
-    "Cloud GPU node remote Slurm queuing reduced idle physical workstation hours by 34.2% this semester."
+    "Shifting non-critical coursework requests from 11:00 AM - 01:00 PM to 05:00 PM - 07:00 PM unlocks 28 additional weekly hours.",
+    "Prototyping SLA 3D print overnight batches in FabLab frees peak daylight hours for calibration.",
+    "Cloud workstation remote queuing reduced idle physical lab hours by 34.2% this semester."
   ]
 };
 

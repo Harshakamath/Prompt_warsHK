@@ -4,7 +4,11 @@ import {
   scoreRequest,
   generateDigitalLabPass
 } from "../services/aiScheduler";
-import { sanitizeInput, validateBookingPayload } from "../utils/security";
+import {
+  sanitizeInput,
+  validateBookingPayload,
+  validateEquipmentPayload
+} from "../utils/security";
 import { sampleConflictingRequests } from "../data/labData";
 
 describe("LabLink Production AI Scheduler, Security & Verification Suite", () => {
@@ -181,5 +185,52 @@ describe("LabLink Production AI Scheduler, Security & Verification Suite", () =>
 
     expect(result.isValid).toBe(true);
     expect(Object.keys(result.errors).length).toBe(0);
+  });
+
+  // Test 11: Equipment payload validation acceptance
+  it("11. should accept and validate legitimate equipment registration submissions", () => {
+    const validEquipment = {
+      name: "Rohde & Schwarz Spectrum Analyzer",
+      department: "ECE / VLSI",
+      labRoom: "Room 204 - RF Lab",
+      totalUnits: 3
+    };
+
+    const result = validateEquipmentPayload(validEquipment);
+    expect(result.isValid).toBe(true);
+    expect(Object.keys(result.errors).length).toBe(0);
+  });
+
+  // Test 12: Equipment payload validation rejection
+  it("12. should reject equipment payloads with missing name, invalid department, or out-of-range units", () => {
+    const invalidEquipment1 = {
+      name: "AB", // too short, min 3 chars
+      department: "ECE / VLSI",
+      labRoom: "Room 204",
+      totalUnits: 2
+    };
+    const invalidEquipment2 = {
+      name: "Digital Multimeter",
+      department: "", // missing department
+      labRoom: "Room 204",
+      totalUnits: 2
+    };
+    const invalidEquipment3 = {
+      name: "Digital Multimeter",
+      department: "ECE / VLSI",
+      labRoom: "Room 204",
+      totalUnits: 0 // < 1 unit
+    };
+    const invalidEquipment4 = {
+      name: "Digital Multimeter",
+      department: "ECE / VLSI",
+      labRoom: "Room 204",
+      totalUnits: 99 // > 50 units
+    };
+
+    expect(validateEquipmentPayload(invalidEquipment1).isValid).toBe(false);
+    expect(validateEquipmentPayload(invalidEquipment2).isValid).toBe(false);
+    expect(validateEquipmentPayload(invalidEquipment3).isValid).toBe(false);
+    expect(validateEquipmentPayload(invalidEquipment4).isValid).toBe(false);
   });
 });

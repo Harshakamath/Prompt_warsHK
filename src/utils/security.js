@@ -103,3 +103,65 @@ export function validateBookingPayload(data) {
     errors
   };
 }
+
+/**
+ * Validates new laboratory equipment registration payloads.
+ *
+ * @param {Object} data - Equipment payload to validate
+ * @returns {{ isValid: boolean, errors: Object<string, string> }}
+ */
+export function validateEquipmentPayload(data) {
+  const errors = {};
+
+  if (!data || typeof data !== "object") {
+    return {
+      isValid: false,
+      errors: { general: "Invalid equipment registration payload structure." }
+    };
+  }
+
+  // 1. Equipment Name (min 3 chars, max 100)
+  const name = typeof data.name === "string" ? data.name.trim() : "";
+  if (!name) {
+    errors.name = "Equipment name is required.";
+  } else if (name.length < 3) {
+    errors.name = "Equipment name must be at least 3 characters.";
+  } else if (name.length > 100) {
+    errors.name = "Equipment name cannot exceed 100 characters.";
+  }
+
+  // 2. Department Selection (must not be empty)
+  const department = typeof data.department === "string" ? data.department.trim() : "";
+  if (!department || department === "All") {
+    errors.department = "Department selection is required.";
+  }
+
+  // 3. Lab Room / Location (min 3 chars, max 100)
+  const labRoom = typeof data.labRoom === "string" ? data.labRoom.trim() : "";
+  if (!labRoom) {
+    errors.labRoom = "Lab room / location is required.";
+  } else if (labRoom.length < 3) {
+    errors.labRoom = "Lab room/location must be at least 3 characters.";
+  } else if (labRoom.length > 100) {
+    errors.labRoom = "Lab room/location cannot exceed 100 characters.";
+  }
+
+  // 4. Total Units (positive integer between 1 and 50)
+  const unitsNum = Number(data.totalUnits);
+  if (
+    data.totalUnits === undefined ||
+    data.totalUnits === null ||
+    data.totalUnits === "" ||
+    isNaN(unitsNum) ||
+    !Number.isInteger(unitsNum) ||
+    unitsNum < 1 ||
+    unitsNum > 50
+  ) {
+    errors.totalUnits = "Total units must be an integer between 1 and 50.";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+}
